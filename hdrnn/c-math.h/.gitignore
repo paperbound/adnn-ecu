@@ -1,0 +1,8 @@
+# executables
+bin/*
+
+# dataset
+dataset/*
+
+# tests
+tests/
