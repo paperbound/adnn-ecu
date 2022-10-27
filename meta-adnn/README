@@ -1,0 +1,38 @@
+This README file contains information on the contents of the meta-adnn layer.
+
+Please see the corresponding sections below for details.
+
+Dependencies
+============
+
+  URI: <first dependency>
+  branch: <branch name>
+
+  URI: <second dependency>
+  branch: <branch name>
+
+  .
+  .
+  .
+
+Patches
+=======
+
+Please reach out to prasanthshaji@icloud.com
+
+Table of Contents
+=================
+
+  I. Adding the meta-adnn layer to your build
+ II. Misc
+
+
+I. Adding the meta-adnn layer to your build
+=================================================
+
+Run 'bitbake-layers add-layer meta-adnn'
+
+II. Misc
+========
+
+Houses recipes for ADNN applications and recipes that house them
