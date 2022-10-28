@@ -22,6 +22,8 @@ Take a look at this file in the script directory to learn about how the layers a
 
 ### Creating an Image recipe
 
+__NOT COMPLETE__
+
 `meta-ann/recipes-core/images/ann-image-minimal.bb`
 
 ```bitbake
@@ -42,7 +44,7 @@ bitbake ann-image-minimal
 
 ### Developing Applications
 
-Yocto provides recipes for setting up a development environment for the target device. This is activated using the `populate_sdk` task that comes with the `ann-image-minimal` image recipe that we use in this workflow
+Yocto provides recipes for setting up a development environment for the target device. This is activated using the `populate_sdk` task that comes with the `ann-image-minimal` image recipe used in this workflow
 
 ```bash
 bitbake -c populate_sdk ann-image-minimal
