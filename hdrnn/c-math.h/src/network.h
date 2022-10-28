@@ -79,6 +79,9 @@ static void back_propogate(Network *);
  */
 void initHDRNN(Network *network)
 {
+	// Start with no first layer
+	// feedforward() assumes image as first set of activations
+	network->layers = NULL;
 	add_layer(network, HIDDEN_LAYER_SIZE, INPUT_LAYER_SIZE);
 	add_layer(network, OUTPUT_LAYER_SIZE, HIDDEN_LAYER_SIZE);
 }
@@ -88,6 +91,7 @@ static void add_layer(Network *network, int size, int incidents)
 	Layer *layer = (Layer *)malloc(sizeof(Layer));
 	layer->incidents = incidents;
 	layer->size = size;
+	layer->next = NULL;
 
 	Neuron *neurons = (Neuron *)malloc(size * sizeof(Neuron));
 	for (int i = 0; i < size; i++)

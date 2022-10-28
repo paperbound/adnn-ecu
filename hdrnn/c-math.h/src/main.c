@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
 		showHelpMessageThenExit(argv[0]);
 	}
 
-	Network *hdrnn = (Network*) malloc(sizeof(Network));;
+	Network *hdrnn = (Network*) malloc(sizeof(Network));
 	initHDRNN(hdrnn);
 	if (strcmp("-train", argv[1]) == 0) {
 		// Train the HDRNN
