@@ -9,6 +9,8 @@
 #define NETWORK_H
 
 #include <math.h>
+#include <string.h>
+
 #include "images.h"
 
 /* Hyperparameters */
@@ -42,9 +44,8 @@ extern float image[SIZE]; // input layer / loaded image
 typedef struct
 {
 	float bias;
-	float zvalue;
-	float output;
 	float *weights;
+	float *nabla_w;
 } Neuron;
 
 typedef struct LayerT
@@ -52,25 +53,35 @@ typedef struct LayerT
 	int size;
 	int incidents;
 	Neuron *neurons;
+	float *activations;
+	float *z_values;
+	float *nabla_b;
 	struct LayerT *next;
+	struct LayerT *previous;
 } Layer;
 
 typedef struct
 {
 	Layer *layers;
+	int depth;
 } Network;
 
 static float sigmoid(float);
 
 static int get_integer(FILE *);
 static float get_float(FILE *);
+
 static int prediction(Network *);
+static void test_network(Network *);
 
 static void add_layer(Network *, int, int);
+
 static void mini_batch_sgd(Network *);
-static void test_network(Network *);
+static void zero_nablas(Network *);
+static void update_with_nablas(Network *);
+
 static void feed_forward(Network *, float *);
-static void back_propogate(Network *);
+static void back_propogate(Network *, int *);
 
 /* HDRNN Neural Network
  *
@@ -79,25 +90,36 @@ static void back_propogate(Network *);
  */
 void initHDRNN(Network *network)
 {
+	// Network Initialisations
+	// Start with no first layer
+	// feedforward() assumes image as first set of activations
+	network->depth = 3;
+
 	add_layer(network, HIDDEN_LAYER_SIZE, INPUT_LAYER_SIZE);
 	add_layer(network, OUTPUT_LAYER_SIZE, HIDDEN_LAYER_SIZE);
 }
 
 static void add_layer(Network *network, int size, int incidents)
 {
-	Layer *layer = (Layer *)malloc(sizeof(Layer));
+	Layer *layer = (Layer *)calloc(1, sizeof(Layer));
 	layer->incidents = incidents;
 	layer->size = size;
+	layer->activations = (float *)calloc(size, sizeof(float));
+	layer->z_values = (float *)calloc(size, sizeof(float));
+	layer->nabla_b = (float *)calloc(size, sizeof(float));
+	layer->next = NULL;
+	layer->previous = NULL;
 
-	Neuron *neurons = (Neuron *)malloc(size * sizeof(Neuron));
+	Neuron *neurons = (Neuron *)calloc(size, sizeof(Neuron));
 	for (int i = 0; i < size; i++)
 	{
 		Neuron *neuron = neurons + i;
 		neuron->bias = rand() / (float)RAND_MAX;
-		float *weights = (float *)malloc(incidents * sizeof(float));
+		float *weights = (float *)calloc(incidents, sizeof(float));
 		for (int j = 0; j < incidents; j++)
 			weights[j] = 0.7 * (rand() / (float)RAND_MAX);
 		neuron->weights = weights;
+		neuron->nabla_w = (float *)calloc(incidents, sizeof(float));
 	}
 	layer->neurons = neurons;
 
@@ -111,16 +133,7 @@ static void add_layer(Network *network, int size, int incidents)
 		while (last->next != NULL)
 			last = last->next;
 		last->next = layer;
-	}
-}
-
-void trainHDRNN(Network *network)
-{
-	for (int i = 0; i < epochs; i++)
-	{
-		// TODO: Yuan does random shuffle here
-		mini_batch_sgd(network);
-		test_network(network);
+		layer->previous = last;
 	}
 }
 
@@ -130,16 +143,16 @@ static int get_integer(FILE *fd)
 	// getline
 	int rows;
 	size_t llen = 21;
-	char *line = (char *)malloc(llen * sizeof(char));
+	char *line = (char *)calloc(llen, sizeof(char));
 
 	if (getline(&line, &llen, fd) == -1)
 	{
-		fprintf(stderr, "Couldn't read Rows");
+		fprintf(stderr, "Couldn't read Rows\n");
 		exit(-1);
 	}
 	if (sscanf(line, "%d", &rows) == EOF)
 	{
-		fprintf(stderr, "Couldn't parse Rows");
+		fprintf(stderr, "Couldn't parse Rows\n");
 		exit(1);
 	}
 	free(line);
@@ -152,7 +165,7 @@ static float get_float(FILE *fd)
 	// getline
 	float value;
 	size_t llen = 21;
-	char *line = (char *)malloc(llen * sizeof(char));
+	char *line = (char *)calloc(llen, sizeof(char));
 
 	if (getline(&line, &llen, fd) == -1)
 	{
@@ -190,7 +203,7 @@ void loadHDRNN(Network *network, char *wfile, char *bfile)
 		rows = get_integer(fd);
 		if (rows != layer->size)
 		{
-			fprintf(stderr, "sizes dont match");
+			fprintf(stderr, "sizes dont match\n");
 			exit(-1);
 		}
 		for (int i = 0; i < rows; i++)
@@ -254,10 +267,21 @@ static float sigmoid(float x)
 	return 1.0 / (1.0 + exp(-x));
 }
 
-/* static float sigmoid_prime(float x) */
-/* { */
-/* 	return sigmoid(x) * (1 - sigmoid(x)); */
-/* } */
+static float sigmoid_prime(float x)
+{
+	return sigmoid(x) * (1 - sigmoid(x));
+}
+
+void trainHDRNN(Network *network)
+{
+	for (int i = 0; i < epochs; i++)
+	{
+		// TODO: Yuan does random shuffle here
+		// Implement using https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
+		mini_batch_sgd(network);
+		test_network(network);
+	}
+}
 
 /* Stochastic Gradient Descend */
 
@@ -265,12 +289,77 @@ static void mini_batch_sgd(Network *network)
 {
 	for (int i = 0; i < NUM_TRAIN; i += batchSize)
 	{
+		zero_nablas(network);
 		for (int j = 0; j < batchSize; j++)
 		{
+			int label[OUTPUT_LAYER_SIZE] = {0};
 			// update_mini_batch
 			load_image(train_images, i + j);
-			back_propogate(network);
+			label[train_labels[i + j]] = 1;
+			back_propogate(network, label);
 		}
+		// printf("bias before update :");
+		// for (int i = 0; i < network->layers->size; i++)
+		// {
+		// 	Neuron *neuron = &network->layers->neurons[i];
+		// 	printf("%f ", neuron->bias);
+		// }
+		// printf("\nnabla_b : ");
+		// for (int i = 0; i < network->layers->size; i++)
+		// {
+		// 	printf("%f ", network->layers->nabla_b[i]);
+		// }
+		// printf("\nbias after update :");
+		update_with_nablas(network);
+		// for (int i = 0; i < network->layers->size; i++)
+		// {
+		// 	Neuron *neuron = &network->layers->neurons[i];
+		// 	printf("%f ", neuron->bias);
+		// }
+		// printf("\n");
+	}
+}
+
+static void zero_nablas(Network *network)
+{
+	Layer *layer = network->layers;
+
+	if (layer == NULL)
+		return;
+
+	while (layer != NULL)
+	{
+		memset(layer->nabla_b, 0, layer->size * sizeof(float));
+		for (int i = 0; i < layer->size; i++)
+		{
+			Neuron *neuron = &layer->neurons[i];
+			memset(neuron->nabla_w, 0, layer->incidents * sizeof(float));
+		}
+		layer = layer->next;
+	}
+}
+
+static void update_with_nablas(Network *network)
+{
+	float factor = eta / batchSize;
+
+	Layer *layer = network->layers;
+
+	if (layer == NULL)
+		return;
+
+	while (layer != NULL)
+	{
+		for (int i = 0; i < layer->size; i++)
+		{
+			Neuron *neuron = &layer->neurons[i];
+			neuron->bias -= (factor * layer->nabla_b[i]);
+			for (int j = 0; j < layer->incidents; j++)
+			{
+				neuron->weights[j] -= (factor * neuron->nabla_w[j]);
+			}
+		}
+		layer = layer->next;
 	}
 }
 
@@ -282,12 +371,12 @@ static int prediction(Network *network)
 	float highest = 0;
 	for (int i = 0; i < OUTPUT_LAYER_SIZE; i++)
 	{
-		Layer *output = network->layers;
-		while (output != NULL && output->next != NULL)
-			output = output->next;
-		if (highest < output->neurons[i].output)
+		Layer *output_layer = network->layers;
+		while (output_layer != NULL && output_layer->next != NULL)
+			output_layer = output_layer->next;
+		if (highest < output_layer->activations[i])
 		{
-			highest = output->neurons[i].output;
+			highest = output_layer->activations[i];
 			prediction = i;
 		}
 	}
@@ -303,7 +392,7 @@ static void test_network(Network *network)
 		guess = prediction(network);
 		correct += guess == test_labels[i];
 	}
-	printf("Network has classified %d (%d) images correctly", correct, NUM_TEST);
+	printf("Network has classified %d (%d) images correctly\n", correct, NUM_TEST);
 }
 
 /* Forward Propogation
@@ -312,48 +401,97 @@ static void test_network(Network *network)
  */
 static void feed_forward(Network *network, float *image)
 {
-	Layer *layer = network->layers;
+	// First layer is the image
 	float *activations = image;
+
+	Layer *layer = network->layers;
 	while (layer != NULL)
 	{
-		float *nextActivations = (float *)malloc(layer->size * sizeof(float));
 		for (int i = 0; i < layer->size; i++)
 		{
 			Neuron *neuron = &layer->neurons[i];
 			float zvalue = 0;
-			for (int i = 0; i < layer->incidents; i++)
+			for (int j = 0; j < layer->incidents; j++)
 			{
-				zvalue += neuron->weights[i] * activations[i];
+				zvalue += neuron->weights[j] * activations[j];
 			}
-			neuron->zvalue = zvalue + neuron->bias;
-			neuron->output = sigmoid(neuron->zvalue);
-			nextActivations[i] = neuron->output;
+			layer->z_values[i] = zvalue + neuron->bias;
+			layer->activations[i] = sigmoid(layer->z_values[i]);
 		}
+		activations = layer->activations;
 		layer = layer->next;
-		if (activations != image)
-		{
-			free(activations);
-		}
-		activations = nextActivations;
 	}
-	// free the last layer of activations
-	free(activations);
 }
 
 /* Back Propogation */
 
-static void back_propogate(Network *network)
+static void back_propogate(Network *network, int *y)
 {
-	/* feed_forward(network, image); */
-	/* float factor = eta / batchSize; */
-	/* // Take z values and activations of the last layer */
-	/* Layer *layer = network->layers; */
-	/* while (layer != NULL && layer->next != NULL) */
-	/* { */
-	/* 	layer = layer->next; */
-	/* } */
-	/* float *zvalues = (float *)malloc(layer->size * sizeof(float)); */
-	/* float *outputs = (float *)malloc(layer->size * sizeof(float)); */
+	feed_forward(network, image);
+
+	// Take last and second last layers
+	Layer *last_layer = network->layers;
+	Layer *second_last_layer = NULL;
+	while (last_layer != NULL && last_layer->next != NULL)
+	{
+		second_last_layer = last_layer;
+		last_layer = last_layer->next;
+	}
+
+	if (last_layer == NULL || second_last_layer == NULL)
+		return;
+
+	printf("\nnabla_b label is %d %d %d %d %d %d %d %d %d %d : ", y[0], y[1], y[2], y[3], y[4], y[5], y[6], y[7], y[8], y[9]);
+	for (int i = 0; i < last_layer->size; i++)
+	{
+		last_layer->nabla_b[i] += (last_layer->activations[i] - y[i]) *
+			sigmoid_prime(last_layer->z_values[i]);
+		Neuron *neuron = &last_layer->neurons[i];
+		printf("(%.2f - %.2f) ", neuron->bias, last_layer->activations[i]);
+		for (int j = 0; j < second_last_layer->size; j++)
+		{
+			neuron->nabla_w[j] += last_layer->nabla_b[i] *
+				second_last_layer->activations[j];
+		}
+		// for (int i = 0; i < network->layers->size; i++)
+		// {
+		printf("%.2f ", last_layer->nabla_b[i]);
+		// }
+	}
+	printf("\n");
+
+	// Iterate over layers in reverse order from the last one
+	Layer *layer = last_layer->previous;
+	while (layer != NULL)
+	{
+		for (int i = 0; i < layer->size; i++)
+		{
+			float sp = sigmoid_prime(layer->z_values[i]);
+			Neuron *neuron = &layer->neurons[i];
+			for (int j = 0; j < layer->next->size; j++)
+			{
+				Neuron *n_neuron = &layer->next->neurons[j];
+				for (int k = 0; k < layer->size; k++)
+				{
+					layer->nabla_b[i] += layer->next->nabla_b[j] * n_neuron->weights[k];
+				}
+			}
+			layer->nabla_b[i] *= sp;
+
+			float *activations;
+			if (layer->previous == NULL)
+				activations = image;
+			else
+				activations = layer->previous->activations;
+
+			for (int j = 0; j < layer->incidents; j++)
+			{
+				neuron->nabla_w[j] += layer->nabla_b[i] *
+					activations[j];
+			}
+		}
+		layer = layer->previous;
+	}
 }
 
 #endif

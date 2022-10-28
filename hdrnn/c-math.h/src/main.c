@@ -32,12 +32,13 @@ int main(int argc, char *argv[]) {
 		showHelpMessageThenExit(argv[0]);
 	}
 
-	Network *hdrnn = (Network*) malloc(sizeof(Network));;
+	Network *hdrnn = (Network*) calloc(1, sizeof(Network));
 	initHDRNN(hdrnn);
 	if (strcmp("-train", argv[1]) == 0) {
 		// Train the HDRNN
 		load_mnist();
 		trainHDRNN(hdrnn);
+		// dumpWeigths(hdrnn);
 	} else if (strcmp("-infer", argv[1]) == 0) {
 		// Infer
 		loadHDRNN(hdrnn, argv[4], argv[6]);
