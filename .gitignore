@@ -1,0 +1,5 @@
+# bitbake build folder
+build
+
+# poky sdk folder
+sdk

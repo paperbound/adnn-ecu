@@ -20,11 +20,15 @@ To setup the environment run the following script found in the `scripts` directo
 
 Take a look at this file in the script directory to learn about how the layers are setup in this workflow
 
-### Creating an Image recipe
+### Yocto Terminology
 
-__NOT COMPLETE__
+The Yocto project has what's called a "Layer Model". Layers are repositories that contain related sets of instructions that tell the OpenEmbedded Build System what to do. You can see some of the layers used in this repository as the submodules `poky`, `meta-ti`, and `meta-arm`. The repository also houses a layer called `meta-adnn`
 
-`meta-ann/recipes-core/images/ann-image-minimal.bb`
+## Creating an Image recipe
+
+An image in Yocto are top level recipes that defines how the root file system is build and what packages it will contain. It has a description, a license, and inherits the core-image-class
+
+An example of an important image recipe used in this project can be found in `meta-ann/recipes-core/images/ann-image-minimal.bb`
 
 ```bitbake
 SUMMARY = "A small image with the <application>"
@@ -42,13 +46,23 @@ To create an image with this recipe, run:
 bitbake ann-image-minimal
 ```
 
-### Developing Applications
+Note that the current LICENSE values through out `meta-adnn` are placeholders
+
+## Developing Applications
 
 Yocto provides recipes for setting up a development environment for the target device. This is activated using the `populate_sdk` task that comes with the `ann-image-minimal` image recipe used in this workflow
 
 ```bash
 bitbake -c populate_sdk ann-image-minimal
 ```
+
+This task will ask where to place the SDK which for this repository we will assume to be in `sdk` directory which is not checked in
+
+### Creating an application recipe
+
+The details of how to compile and install the application will be described in an application recipes in the `meta-adnn/recipes-adnn` directory
+
+An example application recipe can be found in `meta-adnn/recipes-adnn/hdrnn-cmath/hdrnn-cmath_0.1.bb`
 
 ### Running the application on the device
 

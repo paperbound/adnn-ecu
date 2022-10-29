@@ -36,3 +36,12 @@ git checkout -b yocto-4.0 yocto-4.0
 cd `git rev-parse --show-toplevel`
 cd meta-ti
 git checkout -b kirkstone kirkstone
+
+# Setup bitbake
+cd `git rev-parse --show-toplevel`
+source poky/oe-init-build-env
+
+# Setup layers
+bitbake-layers add-layer meta-ti
+bitbake-layers add-layer meta-arm
+bitbake-layers add-layer meta-adnn
