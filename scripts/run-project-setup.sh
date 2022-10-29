@@ -18,7 +18,7 @@
 # Setup the submodules
 cd `git rev-parse --show-toplevel`
 git checkout main
-git submodules update --init
+git submodule update --init
 
 # Setup poky
 
