@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 /* Location for MNIST Data */
 
@@ -32,6 +33,7 @@
 
 /* Training and Testing Data */
 
+int train_indexer[NUM_TRAIN];
 float train_images[NUM_TRAIN][SIZE];
 float test_images[NUM_TEST][SIZE];
 int train_labels[NUM_TRAIN];
@@ -133,6 +135,33 @@ void load_image(float images[][SIZE], int index)
 		image[i] = images[index][i];
 }
 
+/* Load an Image data from Training into image */
+void load_train_image(int index)
+{
+	for (int i = 0; i < SIZE; i++)
+		image[i] = train_images[train_indexer[index]][i];
+}
+
+/* Get Train image label */
+int get_train_label(int index)
+{
+	return train_labels[train_indexer[index]];
+}
+
+/* Shuffle train indixes */
+void shuffle_train_indexes()
+{
+	// Fisher-Yates shuffle
+	// https://w.wiki/5ttL
+	for (int i = 0; i <= NUM_TRAIN - 2; i++)
+	{
+		int j = i + (rand() % (NUM_TRAIN - i));
+		int temp = train_indexer[i];
+		train_indexer[i] = train_indexer[j];
+		train_indexer[j] = temp;
+	}
+}
+
 /* Load the data from the 4 MNIST IDX files */
 void load_mnist()
 {
@@ -152,6 +181,11 @@ void load_mnist()
 	read_mnist(TEST_LABEL, NUM_TEST, LEN_INFO_LABEL,
 		1, test_label_char, info_label);
 	label_char2int(NUM_TEST, test_label_char, test_labels);
+
+	// Setup index
+	srand(time(NULL));
+	for (int i = 0; i < NUM_TRAIN; i++)
+		train_indexer[i] = i;
 }
 
 #endif

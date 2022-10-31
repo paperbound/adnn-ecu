@@ -294,29 +294,11 @@ static void mini_batch_sgd(Network *network)
 		{
 			int label[OUTPUT_LAYER_SIZE] = {0};
 			// update_mini_batch
-			load_image(train_images, i + j);
-			label[train_labels[i + j]] = 1;
+			load_train_image(i + j);
+			label[get_train_label(i + j)] = 1;
 			back_propogate(network, label);
 		}
-		// printf("bias before update :");
-		// for (int i = 0; i < network->layers->size; i++)
-		// {
-		// 	Neuron *neuron = &network->layers->neurons[i];
-		// 	printf("%f ", neuron->bias);
-		// }
-		// printf("\nnabla_b : ");
-		// for (int i = 0; i < network->layers->size; i++)
-		// {
-		// 	printf("%f ", network->layers->nabla_b[i]);
-		// }
-		// printf("\nbias after update :");
 		update_with_nablas(network);
-		// for (int i = 0; i < network->layers->size; i++)
-		// {
-		// 	Neuron *neuron = &network->layers->neurons[i];
-		// 	printf("%f ", neuron->bias);
-		// }
-		// printf("\n");
 	}
 }
 
@@ -441,24 +423,17 @@ static void back_propogate(Network *network, int *y)
 	if (last_layer == NULL || second_last_layer == NULL)
 		return;
 
-	printf("\nnabla_b label is %d %d %d %d %d %d %d %d %d %d : ", y[0], y[1], y[2], y[3], y[4], y[5], y[6], y[7], y[8], y[9]);
 	for (int i = 0; i < last_layer->size; i++)
 	{
 		last_layer->nabla_b[i] += (last_layer->activations[i] - y[i]) *
 			sigmoid_prime(last_layer->z_values[i]);
 		Neuron *neuron = &last_layer->neurons[i];
-		printf("(%.2f - %.2f) ", neuron->bias, last_layer->activations[i]);
 		for (int j = 0; j < second_last_layer->size; j++)
 		{
 			neuron->nabla_w[j] += last_layer->nabla_b[i] *
 				second_last_layer->activations[j];
 		}
-		// for (int i = 0; i < network->layers->size; i++)
-		// {
-		printf("%.2f ", last_layer->nabla_b[i]);
-		// }
 	}
-	printf("\n");
 
 	// Iterate over layers in reverse order from the last one
 	Layer *layer = last_layer->previous;
