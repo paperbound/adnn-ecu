@@ -146,11 +146,11 @@ static void add_layer(Network *network, int size, int incidents)
 	for (int i = 0; i < size; i++)
 	{
 		Neuron *neuron = neurons + i;
-		double r = sqrt(2 / (double)size);
-		neuron->bias = r * randn(0, 1);
+		// double r = sqrt(2 / (double)size);
+		neuron->bias = randn(0, 0.99);
 		double *weights = (double *)calloc(incidents, sizeof(double));
 		for (int j = 0; j < incidents; j++)
-			weights[j] = r * randn(0, 1);
+			weights[j] = randn(0, 0.99);
 		neuron->weights = weights;
 		neuron->nabla_w = (double *)calloc(incidents, sizeof(double));
 	}
@@ -327,7 +327,7 @@ static void mini_batch_sgd(Network *network)
 
 	int k = 0;
 	Layer *layer = network->layers;
-	while (layer != NULL & layer->next != NULL)
+	while (layer != NULL)
 	{
 		nabla_b[k] = (double *)calloc(layer->size, sizeof(double));
 		nabla_w[k] = (double **)calloc(layer->size, sizeof(double *));
@@ -344,7 +344,7 @@ static void mini_batch_sgd(Network *network)
 		// Set Batch Nablas to zero
 		k = 0;
 		layer = network->layers;
-		while (layer != NULL & layer->next != NULL)
+		while (layer != NULL)
 		{
 			for (int l = 0; l < layer->size; l++)
 			{
@@ -363,12 +363,13 @@ static void mini_batch_sgd(Network *network)
 			// update_mini_batch
 			load_train_image(i + j);
 			label[get_train_label(i + j)] = 1;
+			feed_forward(network, image);
 			back_propogate(network, label);
 
 			// Accumulate Batch Nablas
 			k = 0;
 			layer = network->layers;
-			while (layer != NULL & layer->next != NULL)
+			while (layer != NULL)
 			{
 				for (int l = 0; l < layer->size; l++)
 				{
@@ -380,25 +381,24 @@ static void mini_batch_sgd(Network *network)
 				k += 1;
 				layer = layer->next;
 			}
-
 		}
-	}
 
-	// Update with Batch Nablas
-	k = 0;
-	layer = network->layers;
-	while (layer != NULL)
-	{
-		for (int i = 0; i < layer->size; i++)
+		// Update with Batch Nablas
+		k = 0;
+		layer = network->layers;
+		while (layer != NULL)
 		{
-			Neuron *neuron = &layer->neurons[i];
-			neuron->bias -= (factor * nabla_b[k][i]);
-			for (int j = 0; j < layer->incidents; j++)
+			for (int i = 0; i < layer->size; i++)
 			{
-				neuron->weights[j] -= (factor * nabla_w[k][i][j]);
+				Neuron *neuron = &layer->neurons[i];
+				neuron->bias -= (factor * nabla_b[k][i]);
+				for (int j = 0; j < layer->incidents; j++)
+				{
+					neuron->weights[j] -= (factor * nabla_w[k][i][j]);
+				}
 			}
+			layer = layer->next;
 		}
-		layer = layer->next;
 	}
 
 }
@@ -487,8 +487,6 @@ static void feed_forward(Network *network, double *image)
 
 static void back_propogate(Network *network, double *y)
 {
-	feed_forward(network, image);
-
 	// Take last and second last layers
 	Layer *layer = network->layers;
 	while (layer != NULL && layer->next != NULL)
