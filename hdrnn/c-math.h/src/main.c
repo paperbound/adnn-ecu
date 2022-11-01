@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 		// Train the HDRNN
 		load_mnist();
 		trainHDRNN(hdrnn);
-		// dumpWeigths(hdrnn);
+		dumpWeights(hdrnn, argv[4], argv[6]);
 	} else if (strcmp("-infer", argv[1]) == 0) {
 		// Infer
 		loadHDRNN(hdrnn, argv[4], argv[6]);

@@ -34,8 +34,8 @@
 /* Training and Testing Data */
 
 int train_indexer[NUM_TRAIN];
-float train_images[NUM_TRAIN][SIZE];
-float test_images[NUM_TEST][SIZE];
+double train_images[NUM_TRAIN][SIZE];
+double test_images[NUM_TEST][SIZE];
 int train_labels[NUM_TRAIN];
 int test_labels[NUM_TEST];
 
@@ -44,7 +44,7 @@ int info_label[LEN_INFO_LABEL];
 
 /* Current Image */
 
-float image[SIZE];
+double image[SIZE];
 
 unsigned char train_image_char[NUM_TRAIN][SIZE];
 unsigned char test_image_char[NUM_TEST][SIZE];
@@ -52,7 +52,7 @@ unsigned char train_label_char[NUM_TRAIN][1];
 unsigned char test_label_char[NUM_TEST][1];
 
 static void switch_magic_endiannes(unsigned char*);
-static void image_char2float(int, unsigned char [][SIZE],float [][SIZE]);
+static void image_char2double(int, unsigned char [][SIZE],double [][SIZE]);
 static void label_char2int(int, unsigned char [][1],int []);
 
 /* Switch Endianness of 4 byte Magic Number */
@@ -107,16 +107,16 @@ void read_mnist(char* file_path, int num_data, int len_info,
 	fclose(fd);
 }
 
-/* Convert Image Data from Character to float
+/* Convert Image Data from Character to double
  * by normalising it to between 0 and 1
  */
-static void image_char2float(int num_data,
+static void image_char2double(int num_data,
 					unsigned char data_image_char[][SIZE],
-					float data_image[][SIZE])
+					double data_image[][SIZE])
 {
 	for (int i = 0; i < num_data; i++)
 		for (int j = 0; j < SIZE; j++)
-			data_image[i][j] = (float)data_image_char[i][j] / 255.0;
+			data_image[i][j] = (double)data_image_char[i][j] / 255.0;
 }
 
 /* Convert Label from Character to Integer */
@@ -129,7 +129,7 @@ static void label_char2int(int num_data,
 }
 
 /* Load an Image data into image */
-void load_image(float images[][SIZE], int index)
+void load_image(double images[][SIZE], int index)
 {
 	for (int i = 0; i < SIZE; i++)
 		image[i] = images[index][i];
@@ -167,12 +167,12 @@ void load_mnist()
 {
 	read_mnist(TRAIN_IMAGE, NUM_TRAIN, LEN_INFO_IMAGE, SIZE,
 		train_image_char, info_image);
-	image_char2float(NUM_TRAIN,
+	image_char2double(NUM_TRAIN,
 		train_image_char, train_images);
 
 	read_mnist(TEST_IMAGE, NUM_TEST, LEN_INFO_IMAGE, SIZE,
 		test_image_char, info_image);
-	image_char2float(NUM_TEST, test_image_char, test_images);
+	image_char2double(NUM_TEST, test_image_char, test_images);
 
 	read_mnist(TRAIN_LABEL, NUM_TRAIN, LEN_INFO_LABEL,
 		1, train_label_char, info_label);
