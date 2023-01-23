@@ -11,7 +11,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 /* Location for MNIST Data */
 
@@ -23,8 +22,11 @@
 /* Image Parameters */
 
 #define SIZE 784 // 28*28
-#define NUM_TRAIN 60000
+
+#define NUM_TRAIN 50000
+#define NUM_VALIDATE 10000
 #define NUM_TEST 10000
+
 #define LEN_INFO_IMAGE 4
 #define LEN_INFO_LABEL 2
 
@@ -34,9 +36,13 @@
 /* Training and Testing Data */
 
 int train_indexer[NUM_TRAIN];
-double train_images[NUM_TRAIN][SIZE];
-double test_images[NUM_TEST][SIZE];
+
+float train_images[NUM_TRAIN][SIZE];
+float validate_images[NUM_VALIDATE][SIZE];
+float test_images[NUM_TEST][SIZE];
+
 int train_labels[NUM_TRAIN];
+int validate_labels[NUM_VALIDATE];
 int test_labels[NUM_TEST];
 
 int info_image[LEN_INFO_IMAGE];
@@ -44,15 +50,19 @@ int info_label[LEN_INFO_LABEL];
 
 /* Current Image */
 
-double image[SIZE];
+float image[SIZE];
 
 unsigned char train_image_char[NUM_TRAIN][SIZE];
+unsigned char validate_image_char[NUM_VALIDATE][SIZE];
 unsigned char test_image_char[NUM_TEST][SIZE];
+
 unsigned char train_label_char[NUM_TRAIN][1];
+unsigned char validate_label_char[NUM_VALIDATE][1];
 unsigned char test_label_char[NUM_TEST][1];
 
 static void switch_magic_endiannes(unsigned char*);
-static void image_char2double(int, unsigned char [][SIZE],double [][SIZE]);
+
+static void image_char2float(int, unsigned char [][SIZE],float [][SIZE]);
 static void label_char2int(int, unsigned char [][1],int []);
 
 /* Switch Endianness of 4 byte Magic Number */
@@ -75,7 +85,7 @@ static void switch_magic_endiannes(unsigned char *ptr)
 /* Read MNIST Images from the dataset directory,
  * Load images and labels for testing and training
  */
-void read_mnist(char* file_path, int num_data, int len_info,
+void read_mnist(char* file_path, int num_data, int offset, int len_info,
 					int arr_n, unsigned char data_char[][arr_n], int info_arr[])
 {
 	FILE* fd;
@@ -88,6 +98,7 @@ void read_mnist(char* file_path, int num_data, int len_info,
 	}
 
 	fread(info_arr, sizeof(int), len_info, fd);
+	fseek(fd, offset * sizeof(unsigned char), SEEK_CUR);
 
 	// Read-in Magic Number
 	// See IDX format in _reference_
@@ -107,16 +118,16 @@ void read_mnist(char* file_path, int num_data, int len_info,
 	fclose(fd);
 }
 
-/* Convert Image Data from Character to double
+/* Convert Image Data from Character to float
  * by normalising it to between 0 and 1
  */
-static void image_char2double(int num_data,
+static void image_char2float(int num_data,
 					unsigned char data_image_char[][SIZE],
-					double data_image[][SIZE])
+					float data_image[][SIZE])
 {
 	for (int i = 0; i < num_data; i++)
 		for (int j = 0; j < SIZE; j++)
-			data_image[i][j] = (double)data_image_char[i][j] / 255.0;
+			data_image[i][j] = (float)data_image_char[i][j] / 255.0;
 }
 
 /* Convert Label from Character to Integer */
@@ -129,7 +140,7 @@ static void label_char2int(int num_data,
 }
 
 /* Load an Image data into image */
-void load_image(double images[][SIZE], int index)
+void load_image(float images[][SIZE], int index)
 {
 	for (int i = 0; i < SIZE; i++)
 		image[i] = images[index][i];
@@ -165,25 +176,32 @@ void shuffle_train_indexes()
 /* Load the data from the 4 MNIST IDX files */
 void load_mnist()
 {
-	read_mnist(TRAIN_IMAGE, NUM_TRAIN, LEN_INFO_IMAGE, SIZE,
+	read_mnist(TRAIN_IMAGE, NUM_TRAIN, 0, LEN_INFO_IMAGE, SIZE,
 		train_image_char, info_image);
-	image_char2double(NUM_TRAIN,
+	image_char2float(NUM_TRAIN,
 		train_image_char, train_images);
 
-	read_mnist(TEST_IMAGE, NUM_TEST, LEN_INFO_IMAGE, SIZE,
-		test_image_char, info_image);
-	image_char2double(NUM_TEST, test_image_char, test_images);
+	read_mnist(TRAIN_IMAGE, NUM_VALIDATE, NUM_TRAIN, LEN_INFO_IMAGE, SIZE,
+		validate_image_char, info_image);
+	image_char2float(NUM_VALIDATE,
+		validate_image_char, validate_images);
 
-	read_mnist(TRAIN_LABEL, NUM_TRAIN, LEN_INFO_LABEL,
+	read_mnist(TEST_IMAGE, NUM_TEST, 0, LEN_INFO_IMAGE, SIZE,
+		test_image_char, info_image);
+	image_char2float(NUM_TEST, test_image_char, test_images);
+
+	read_mnist(TRAIN_LABEL, NUM_TRAIN, 0, LEN_INFO_LABEL,
 		1, train_label_char, info_label);
 	label_char2int(NUM_TRAIN, train_label_char, train_labels);
 
-	read_mnist(TEST_LABEL, NUM_TEST, LEN_INFO_LABEL,
+	read_mnist(TRAIN_LABEL, NUM_VALIDATE, NUM_TRAIN, LEN_INFO_LABEL,
+		1, validate_label_char, info_label);
+	label_char2int(NUM_VALIDATE, validate_label_char, validate_labels);
+
+	read_mnist(TEST_LABEL, NUM_TEST, 0, LEN_INFO_LABEL,
 		1, test_label_char, info_label);
 	label_char2int(NUM_TEST, test_label_char, test_labels);
 
-	// Setup index
-	srand(time(NULL));
 	for (int i = 0; i < NUM_TRAIN; i++)
 		train_indexer[i] = i;
 }
