@@ -11,7 +11,7 @@
 #include "mnist.h"
 
 extern unsigned char test_image_char[NUM_TEST][SIZE];
-extern double image[SIZE];
+extern float image[SIZE];
 
 void write_image(char* filename, int t_index)
 {

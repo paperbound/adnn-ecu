@@ -2,8 +2,6 @@
  * Handwritten Digit Recognizer using Neural Network
  * based on Le Cunn Et. al
  *
- * 1DT109 ASwPLC
- *
  * @author Prasanth Thomas Shaji
  *
  * For Usage Information see README.md
