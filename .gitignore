@@ -1,0 +1,8 @@
+# vscode
+.vscode
+
+# bitbake build folder
+build
+
+# poky sdk folder
+sdk

@@ -1,0 +1,9 @@
+[submodule "poky"]
+	path = poky
+	url = https://git.yoctoproject.org/poky/
+[submodule "meta-ti"]
+	path = meta-ti
+	url = https://git.yoctoproject.org/meta-ti
+[submodule "meta-arm"]
+	path = meta-arm
+	url = https://git.yoctoproject.org/meta-arm

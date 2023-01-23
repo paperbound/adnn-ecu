@@ -1,5 +1,5 @@
 LDLIBS := -lm
-CFLAGS := -g -std=c99 -Wall
+CFLAGS := -g -std=c99 -Wall -O0
 
 all: hdrnn
 
