@@ -6,3 +6,7 @@ dataset/*
 
 # tests
 tests/
+
+# network calculations
+bias/*
+weights/*

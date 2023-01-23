@@ -1,0 +1,12 @@
+# python generation files
+__pycache__
+
+# generated pgm files
+*.pgm
+
+# MNIST dataset
+mnist.pkl.gz
+
+# network calculations
+bias
+weights
