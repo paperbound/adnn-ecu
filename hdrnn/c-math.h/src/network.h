@@ -17,9 +17,9 @@
 
 /* Hyperparameters */
 
-int epochs = 40;
+int epochs = 30;
 int batchSize = 10;
-float eta = 0.64;
+float eta = 3;
 
 #define INPUT_LAYER_SIZE 784
 #define OUTPUT_LAYER_SIZE 10
@@ -75,7 +75,6 @@ static int get_integer(FILE *);
 static float get_float(FILE *);
 
 static int prediction(Network *);
-static void test_network(Network *);
 
 static void add_layer(Network *, int, int);
 
@@ -112,17 +111,11 @@ static void add_layer(Network *network, int size, int incidents)
 	layer->next = NULL;
 	layer->previous = NULL;
 
-	// Setup Random Number Generator
-	bitgen_t bitgen = init_prng();
-
 	Neuron *neurons = (Neuron *)calloc(size, sizeof(Neuron));
 	for (int i = 0; i < size; i++)
 	{
 		Neuron *neuron = neurons + i;
-		neuron->bias = random_standard_normal_f(&bitgen);
 		float *weights = (float *)calloc(incidents, sizeof(float));
-		for (int j = 0; j < incidents; j++)
-			weights[j] =  random_standard_normal_f(&bitgen);
 		neuron->weights = weights;
 		neuron->nabla_w = (float *)calloc(incidents, sizeof(float));
 	}
@@ -139,6 +132,27 @@ static void add_layer(Network *network, int size, int incidents)
 			last = last->next;
 		last->next = layer;
 		layer->previous = last;
+	}
+}
+
+void generate_random_weights(Network *network)
+{
+	// Setup Random Number Generator
+	bitgen_t bitgen;
+
+	bitgen = init_prng();
+
+	Layer *layer = network->layers;
+	while (layer != NULL)
+	{
+		for (int i = 0; i < layer->size; i++)
+		{
+			Neuron *neuron = &layer->neurons[i];
+			neuron->bias = random_standard_normal_f(&bitgen);
+			for (int j = 0; j < layer->incidents; j++)
+				neuron->weights[j] =  random_standard_normal_f(&bitgen);
+		}
+		layer = layer->next;
 	}
 }
 
@@ -277,6 +291,20 @@ static float sigmoid_prime(float x)
 	return sigmoid(x) * (1 - sigmoid(x));
 }
 
+void test_network(Network *network)
+{
+	int correct = 0, guess;
+	for (int i = 0; i < NUM_TEST; i++)
+	{
+		load_image(test_images, i);
+		feed_forward(network, image);
+		guess = prediction(network);
+		correct += (guess == test_labels[i]);
+		// printf("guess : %d label %d\n", guess, test_labels[i]);
+	}
+	printf("Network classified %d (%d) images correctly\n", correct, NUM_TEST);
+}
+
 void trainHDRNN(Network *network)
 {
 	for (int i = 0; i < epochs; i++)
@@ -290,10 +318,11 @@ void trainHDRNN(Network *network)
 
 static void mini_batch_sgd(Network *network)
 {
-	// Initialisations
+	// Batch Allocations
 	float factor = eta / batchSize;
 	float **nabla_b = calloc(network->depth - 1, sizeof(float *));
 	float ***nabla_w = calloc(network->depth - 1, sizeof(float **));
+	float label[OUTPUT_LAYER_SIZE] = {0};
 
 	int k = 0;
 	Layer *layer = network->layers;
@@ -302,9 +331,7 @@ static void mini_batch_sgd(Network *network)
 		nabla_b[k] = (float *)calloc(layer->size, sizeof(float));
 		nabla_w[k] = (float **)calloc(layer->size, sizeof(float *));
 		for (int l = 0; l < layer->size; l++)
-		{
 			nabla_w[k][l] = (float *)calloc(layer->incidents, sizeof(float));
-		}
 		k += 1;
 		layer = layer->next;
 	}
@@ -316,23 +343,24 @@ static void mini_batch_sgd(Network *network)
 		layer = network->layers;
 		while (layer != NULL)
 		{
+			memset(nabla_b[k], 0, layer->size * sizeof(float));
 			for (int l = 0; l < layer->size; l++)
-			{
-				nabla_b[k][l] = 0;
-				for (int m = 0; m < layer->incidents; m++)
-					nabla_w[k][l][m] = 0;
-			}
+				memset(nabla_w[k][l], 0, layer->incidents * sizeof(float));
 			k += 1;
 			layer = layer->next;
 		}
 
 		for (int j = 0; j < batchSize; j++)
 		{
+			// Update the mini batch
 			zero_nablas(network);
-			float label[OUTPUT_LAYER_SIZE] = {0};
-			// update_mini_batch
+
+			// Load training image and label
 			load_train_image(i + j);
+			memset(label, 0, OUTPUT_LAYER_SIZE * sizeof(float));
 			label[get_train_label(i + j)] = 1;
+
+			// Back propagation
 			feed_forward(network, image);
 			back_propogate(network, label);
 
@@ -363,14 +391,28 @@ static void mini_batch_sgd(Network *network)
 				Neuron *neuron = &layer->neurons[i];
 				neuron->bias -= (factor * nabla_b[k][i]);
 				for (int j = 0; j < layer->incidents; j++)
-				{
 					neuron->weights[j] -= (factor * nabla_w[k][i][j]);
-				}
 			}
+			k += 1;
 			layer = layer->next;
 		}
 	}
 
+	// Batch Deallocations
+	k = 0;
+	layer = network->layers;
+	while (layer != NULL)
+	{
+		free(nabla_b[k]);
+		for (int l = 0; l < layer->size; l++)
+			free(nabla_w[k][l]);
+		free(nabla_w[k]);
+		k += 1;
+		layer = layer->next;
+	}
+
+	free(nabla_b);
+	free(nabla_w);
 }
 
 static void zero_nablas(Network *network)
@@ -411,20 +453,6 @@ static int prediction(Network *network)
 	return prediction;
 }
 
-static void test_network(Network *network)
-{
-	int correct = 0, guess;
-	for (int i = 0; i < NUM_TEST; i++)
-	{
-		load_image(test_images, i);
-		feed_forward(network, image);
-		guess = prediction(network);
-		correct += (guess == test_labels[i]);
-		// printf("guess : %d label %d\n", guess, test_labels[i]);
-	}
-	printf("Network has classified %d (%d) images correctly\n", correct, NUM_TEST);
-}
-
 /* Forward Propogation
  *
  * TODO: Have a better strategy than allocating and deallocating memory here
@@ -455,7 +483,7 @@ static void feed_forward(Network *network, float *image)
 
 /* Back Propogation */
 
-static void back_propogate(Network *network, float *y)
+static void back_propogate(Network *network, float *label)
 {
 	// Take last and second last layers
 	Layer *layer = network->layers;
@@ -470,7 +498,7 @@ static void back_propogate(Network *network, float *y)
 
 	for (int i = 0; i < last_layer->size; i++)
 	{
-		last_layer->nabla_b[i] = (last_layer->activations[i] - y[i]) *
+		last_layer->nabla_b[i] = (last_layer->activations[i] - label[i]) *
 			sigmoid_prime(last_layer->z_values[i]);
 
 		Neuron *neuron = &last_layer->neurons[i];
@@ -481,8 +509,9 @@ static void back_propogate(Network *network, float *y)
 		}
 	}
 
-	// Iterate over layers in reverse order from the last one
+	// Iterate over layers in _reverse_ order from the last one
 	layer = second_last_layer;
+	float *activations;
 	while (layer != NULL)
 	{
 		Layer *earlier_layer = layer->next;
@@ -499,7 +528,6 @@ static void back_propogate(Network *network, float *y)
 			}
 			layer->nabla_b[i] = layer->nabla_b[i] * sp;
 
-			float *activations;
 			if (layer->previous == NULL)
 				activations = image;
 			else
@@ -507,8 +535,7 @@ static void back_propogate(Network *network, float *y)
 
 			for (int j = 0; j < layer->incidents; j++)
 			{
-				neuron->nabla_w[j] = (layer->nabla_b[i] *
-					activations[j]);
+				neuron->nabla_w[j] = layer->nabla_b[i] * activations[j];
 			}
 		}
 		layer = layer->previous;

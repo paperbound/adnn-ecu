@@ -133,6 +133,9 @@ bitgen_t init_prng()
 	random_state.state = PCG_128BIT_CONSTANT(0x979c9a98d8462005ULL, 0x7d3e9cb6cfe0549bULL);
 	random_state.inc = PCG_128BIT_CONSTANT(0x0000000000000001ULL, 0xda3e39cb94b95bdbULL);
 
+	// random_state.state = PCG_128BIT_CONSTANT(0x1aa1b5345996452dULL, 0x09585eb7a69561e3ULL);
+	// random_state.inc = PCG_128BIT_CONSTANT(0x418ddadb3af71a82ULL, 0x588133bc447873a9ULL);
+
 	// pcg64_state
 	state.pcg_state = &random_state;
 	state.has_uint32 = 0;

@@ -127,7 +127,7 @@ static void image_char2float(int num_data,
 {
 	for (int i = 0; i < num_data; i++)
 		for (int j = 0; j < SIZE; j++)
-			data_image[i][j] = (float)data_image_char[i][j] / 255.0;
+			data_image[i][j] = (float)data_image_char[i][j] / 256.0;
 }
 
 /* Convert Label from Character to Integer */

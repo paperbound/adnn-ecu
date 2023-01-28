@@ -9,6 +9,8 @@
  */
 
 #include <string.h>
+#include <time.h>
+
 #include "network.h"
 
 extern int epochs;
@@ -30,11 +32,13 @@ int main(int argc, char *argv[]) {
 		showHelpMessageThenExit(argv[0]);
 	}
 
+	clock_t begin = clock();
 	Network *hdrnn = (Network*) calloc(1, sizeof(Network));
 	initHDRNN(hdrnn);
 	if (strcmp("-train", argv[1]) == 0) {
 		// Train the HDRNN
 		load_mnist();
+		generate_random_weights(hdrnn);
 		trainHDRNN(hdrnn);
 		dumpWeights(hdrnn, argv[4], argv[6]);
 	} else if (strcmp("-infer", argv[1]) == 0) {
@@ -45,5 +49,7 @@ int main(int argc, char *argv[]) {
 		printf("Please enter the correct commands\n\n");
 		showHelpMessageThenExit(argv[0]);
 	}
+	clock_t end = clock();
+	printf("Total Execution Time %lfs\n", (double)(end - begin) / CLOCKS_PER_SEC);
 	return 0;
 }
