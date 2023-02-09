@@ -1,4 +1,4 @@
-# Handwritten Digit Recognizer using Neural Network
+# Handwritten Digit Recognizer using Neural Network in C
 
 Note that the data set is not added to repo, find it online :)
 
