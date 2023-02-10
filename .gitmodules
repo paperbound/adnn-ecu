@@ -7,12 +7,12 @@
 [submodule "meta-arm"]
 	path = meta-arm
 	url = https://git.yoctoproject.org/meta-arm
-[submodule "hdrnn/cpp-eigen/submodules/pcg-cpp"]
-	path = hdrnn/cpp-eigen/submodules/pcg-cpp
-	url = git@github.com:imneme/pcg-cpp.git
 [submodule "hdrnn/cpp-eigen/submodules/eigen"]
 	path = hdrnn/cpp-eigen/submodules/eigen
 	url = https://gitlab.com/libeigen/eigen.git
 [submodule "hdrnn/cpp-eigen/submodules/gflags"]
 	path = hdrnn/cpp-eigen/submodules/gflags
 	url = https://github.com/gflags/gflags.git
+[submodule "hdrnn/cpp-eigen/submodules/pcg-cpp"]
+	path = hdrnn/cpp-eigen/submodules/pcg-cpp
+	url = https://github.com/imneme/pcg-cpp.git

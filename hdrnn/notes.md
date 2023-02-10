@@ -54,6 +54,7 @@ CPP based implementation of HDRNN using the Eigen vector library
 ### Task Checklist
 
 - [ ] Complete an inference run
+- [ ] Create debug/release configurations into cmake
 - [ ] Complete a training run
 - [ ] Test on EB / BBB
 - [ ] Change current (argc, argv) handling

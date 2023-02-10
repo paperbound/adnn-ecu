@@ -14,7 +14,7 @@ DEFINE_string(train, "", "Path to the training data for HDRNN");
 DEFINE_string(weights, "./weights", "File path to dump HDRNN weights");
 DEFINE_string(bias, "./bias", "File path to dump HDRNN biases");
 
-namespace fs = std::filesystem;
+namespace fs = std::__fs::filesystem;
 
 int main(int argc, char* argv[])
 {
@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
 			{
 				std::cerr << "Could not find image file: " << filename << std::endl;
 			} else {
-				network.infer_image_from_path(filename);
+				network.infer_pgm_image_from_path(filename);
 			}
 		}
 	}
