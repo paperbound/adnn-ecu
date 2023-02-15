@@ -10,199 +10,121 @@
 #ifndef HDRNN_MNIST_H
 #define HDRNN_MNIST_H
 
-#include <cstdio>
-#include <cstdlib>
+#include <algorithm>
+#include <bit>
+#include <fstream>
+#include <iostream>
+#include <random>
+
+#include "Eigen/Core"
+
+using Eigen::VectorXf;
 
 /* Location for MNIST Data */
+// TODO : maybe change out the #defines to something else
 #define TRAIN_IMAGE "train-images-idx3-ubyte"
 #define TRAIN_LABEL "train-labels-idx1-ubyte"
 #define TEST_IMAGE "t10k-images-idx3-ubyte"
 #define TEST_LABEL "t10k-labels-idx1-ubyte"
 
-/* Image Parameters */
-#define SIZE 784 // 28*28
+namespace mnist_loader {
 
-#define NUM_TRAIN 50000
-#define NUM_VALIDATE 10000
-#define NUM_TEST 10000
+	/* Image Parameters */
+	const unsigned int IMAGE_SIZE = 784; // 28 x 28
 
-#define LEN_INFO_IMAGE 4
-#define LEN_INFO_LABEL 2
+	const unsigned int TRAINING_SIZE = 50000;
+	const unsigned int VALIDATE_SIZE = 10000;
+	const unsigned int TESTING_SIZE  = 10000;
 
-#define MAX_BRIGHTNESS 255
-#define MAX_FILENAME 256
+	const unsigned int IMAGE_INFO_LEN = 4;
+	const unsigned int LABEL_INFO_LEN = 2;
 
-/* Training and Testing Data */
+	const unsigned int MAX_BRIGHTNESS = 255;
 
-int train_indexer[NUM_TRAIN];
+	// TODO: Consider storing as unsigned int as well
+	struct image {
+		VectorXf data;
+		unsigned int label;
+	};
 
-float train_images[NUM_TRAIN][SIZE];
-float validate_images[NUM_VALIDATE][SIZE];
-float test_images[NUM_TEST][SIZE];
+	/* Training and Testing Data */
+	std::vector<image> train;
+	std::vector<image> validation;
+	std::vector<image> test;
 
-int train_labels[NUM_TRAIN];
-int validate_labels[NUM_VALIDATE];
-int test_labels[NUM_TEST];
-
-int info_image[LEN_INFO_IMAGE];
-int info_label[LEN_INFO_LABEL];
-
-/* Current Image */
-
-float image[SIZE];
-
-unsigned char train_image_char[NUM_TRAIN][SIZE];
-unsigned char validate_image_char[NUM_VALIDATE][SIZE];
-unsigned char test_image_char[NUM_TEST][SIZE];
-
-unsigned char train_label_char[NUM_TRAIN][1];
-unsigned char validate_label_char[NUM_VALIDATE][1];
-unsigned char test_label_char[NUM_TEST][1];
-
-static void switch_magic_endiannes(unsigned char*);
-
-static void image_char2float(int, unsigned char [][SIZE],float [][SIZE]);
-static void label_char2int(int, unsigned char [][1],int []);
-
-/* Switch Endianness of 4 byte Magic Number */
-static void switch_magic_endiannes(unsigned char *ptr)
-{
-	register unsigned char val;
-
-	// Swap 1st and 4th bytes
-	val = *(ptr);
-	*(ptr) = *(ptr + 3);
-	*(ptr + 3) = val;
-
-	// Swap 2nd and 3rd bytes
-	ptr += 1;
-	val = *(ptr);
-	*(ptr) = *(ptr + 1);
-	*(ptr + 1) = val;
-}
-
-/* Read MNIST Images from the dataset directory,
- * Load images and labels for testing and training
- */
-void read_mnist(char* file_path, int num_data, int offset, int len_info,
-					int arr_n, unsigned char data_char[][arr_n], int info_arr[])
-{
-	FILE* fd;
-	unsigned char* ptr;
-
-	if ((fd = fopen(file_path, "r")) == NULL)
+	/* Read MNIST Images from the dataset directory,
+	 * Load images and labels for testing and training
+	 *
+	 * Note : assumes that the files will be present
+	 * @param dd_path - the directory path containing the dataset files
+	 * @return success - true or false value based on if the operation succeeded
+	 */
+	bool read_mnist(std::string dd_path)
 	{
-		fprintf(stderr, "couldn't open image file\n");
-		exit(-1);
+		// Input file stream for dataset files
+		std::ifstream train_img_s, train_label_s, test_img_s, test_label_s;
+
+		// Open the files
+		train_img_s.open   (dd_path + TRAIN_IMAGE, std::ios::binary);
+		train_label_s.open (dd_path + TRAIN_LABEL, std::ios::binary);
+		test_img_s.open    (dd_path + TEST_IMAGE,  std::ios::binary);
+		test_label_s.open  (dd_path + TEST_LABEL,  std::ios::binary);
+
+		// Quit if any of the files are not available
+		if (
+		    !train_img_s
+		    || !train_label_s
+		    || !test_img_s
+		    || !test_label_s
+		   )
+			return false;
+
+		char x;
+
+		// Ignore the info arrays
+		train_img_s.seekg(IMAGE_INFO_LEN * sizeof(int));
+		train_label_s.seekg(LABEL_INFO_LEN * sizeof(int));
+		test_img_s.seekg(IMAGE_INFO_LEN * sizeof(int));
+		test_label_s.seekg(LABEL_INFO_LEN * sizeof(int));
+
+		// Read-in MNIST numbers (pixels|labels)
+		// Read in training data
+		for (std::size_t i = 0; i < TRAINING_SIZE; i++)
+		{
+			image img;
+			img.data = VectorXf(IMAGE_SIZE);
+			for (std::size_t j = 0; j < IMAGE_SIZE; j++)
+			{
+				train_img_s.read(&x, sizeof x);
+				img.data[j] = static_cast<float>(x) / MAX_BRIGHTNESS;
+			}
+			train_label_s.read(&x, sizeof x);
+			img.label = static_cast<unsigned int>(x);
+			train.push_back(img);
+		}
+		// Read in test data
+		for (std::size_t i = 0; i < TESTING_SIZE; i++)
+		{
+			image img;
+			img.data = VectorXf(IMAGE_SIZE);
+			for (std::size_t j = 0; j < IMAGE_SIZE; j++)
+			{
+				test_img_s.read(&x, sizeof x);
+				img.data[j] = static_cast<float>(x) / MAX_BRIGHTNESS;
+			}
+			test_label_s.read(&x, sizeof x);
+			img.label = static_cast<unsigned int>(x);
+			test.push_back(img);
+		}
+
+		train_img_s.close();
+		train_label_s.close();
+		test_img_s.close();
+		test_label_s.close();
+
+		return true;
 	}
 
-	fread(info_arr, sizeof(int), len_info, fd);
-	fseek(fd, offset * sizeof(unsigned char), SEEK_CUR);
-
-	// Read-in Magic Number
-	// See IDX format in _reference_
-	for (int i = 0; i < len_info; i++)
-	{
-		ptr = (unsigned char*)(info_arr + i);
-		switch_magic_endiannes(ptr);
-		ptr = ptr + sizeof(int);
-	}
-
-	// Read-in MNIST numbers (pixels|labels)
-	for (int i = 0; i < num_data; i++)
-	{
-		fread(data_char[i], sizeof(unsigned char), arr_n, fd);
-	}
-
-	fclose(fd);
-}
-
-/* Convert Image Data from Character to float
- * by normalising it to between 0 and 1
- */
-static void image_char2float(int num_data,
-					unsigned char data_image_char[][SIZE],
-					float data_image[][SIZE])
-{
-	for (int i = 0; i < num_data; i++)
-		for (int j = 0; j < SIZE; j++)
-			data_image[i][j] = (float)data_image_char[i][j] / 256.0;
-}
-
-/* Convert Label from Character to Integer */
-static void label_char2int(int num_data,
-			unsigned char data_label_char[][1],
-			int data_label[])
-{
-	for (int i = 0; i < num_data; i++)
-		data_label[i] = (int)data_label_char[i][0];
-}
-
-/* Load an Image data into image */
-void load_image(float images[][SIZE], int index)
-{
-	for (int i = 0; i < SIZE; i++)
-		image[i] = images[index][i];
-}
-
-/* Load an Image data from Training into image */
-void load_train_image(int index)
-{
-	for (int i = 0; i < SIZE; i++)
-		image[i] = train_images[train_indexer[index]][i];
-}
-
-/* Get Train image label */
-int get_train_label(int index)
-{
-	return train_labels[train_indexer[index]];
-}
-
-/* Shuffle train indixes */
-void shuffle_train_indexes()
-{
-	// Fisher-Yates shuffle
-	// https://w.wiki/5ttL
-	for (int i = 0; i <= NUM_TRAIN - 2; i++)
-	{
-		int j = i + (rand() % (NUM_TRAIN - i));
-		int temp = train_indexer[i];
-		train_indexer[i] = train_indexer[j];
-		train_indexer[j] = temp;
-	}
-}
-
-/* Load the data from the 4 MNIST IDX files */
-void load_mnist()
-{
-	read_mnist(TRAIN_IMAGE, NUM_TRAIN, 0, LEN_INFO_IMAGE, SIZE,
-		train_image_char, info_image);
-	image_char2float(NUM_TRAIN,
-		train_image_char, train_images);
-
-	read_mnist(TRAIN_IMAGE, NUM_VALIDATE, NUM_TRAIN, LEN_INFO_IMAGE, SIZE,
-		validate_image_char, info_image);
-	image_char2float(NUM_VALIDATE,
-		validate_image_char, validate_images);
-
-	read_mnist(TEST_IMAGE, NUM_TEST, 0, LEN_INFO_IMAGE, SIZE,
-		test_image_char, info_image);
-	image_char2float(NUM_TEST, test_image_char, test_images);
-
-	read_mnist(TRAIN_LABEL, NUM_TRAIN, 0, LEN_INFO_LABEL,
-		1, train_label_char, info_label);
-	label_char2int(NUM_TRAIN, train_label_char, train_labels);
-
-	read_mnist(TRAIN_LABEL, NUM_VALIDATE, NUM_TRAIN, LEN_INFO_LABEL,
-		1, validate_label_char, info_label);
-	label_char2int(NUM_VALIDATE, validate_label_char, validate_labels);
-
-	read_mnist(TEST_LABEL, NUM_TEST, 0, LEN_INFO_LABEL,
-		1, test_label_char, info_label);
-	label_char2int(NUM_TEST, test_label_char, test_labels);
-
-	for (int i = 0; i < NUM_TRAIN; i++)
-		train_indexer[i] = i;
-}
+} // mnist_loader
 
 #endif

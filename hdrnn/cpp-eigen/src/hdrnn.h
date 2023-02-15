@@ -11,15 +11,15 @@
 
 #include <cmath>
 #include <cstdlib>
-#include <filesystem>
 #include <fstream>
 #include <initializer_list>
 #include <vector>
 
 #include "Eigen/Core"
 
-namespace fs = std::__fs::filesystem;
+#include "mnist.h"
 
+using Eigen::Index;
 using Eigen::Matrix;
 using Eigen::MatrixXf;
 using Eigen::VectorXf;
@@ -47,13 +47,6 @@ float sigmoid_prime(float x)
 	return sigmoid(x) * (1 - sigmoid(x));
 }
 
-void display_vector(VectorXf &v)
-{
-	for (float a : v)
-		std::cout << a << " ";
-	std::cout << std::endl;
-}
-
 /* HDR Neural Network (hdrnn) */
 class hdrnn
 {
@@ -66,22 +59,50 @@ public:	/* HDRNN API functions */
 	~hdrnn ();
 
 	/* Train the HDR neural network */
-	void train_hdrnn();
+	void train_hdrnn(std::string);
 
 	/* Evaluate the accuracy of the hdrnn */
-	void evaluate_hdrnn();
+	void evaluate_hdrnn(unsigned int);
 
 	/* Dump csv file of weights and biases */
-	void dump_hdrnn(fs::path, fs::path) const; // takes 2 path names
+	void dump_hdrnn(std::string, std::string) const; // takes 2 path names
 
 	/* Loads a csv file of weights and biases into the Network */
-	void load_hdrnn(fs::path, fs::path);
+	void load_hdrnn(std::string, std::string);
 
 	/* Infer the image at path of a handwritten digit using the network */
-	void infer_pgm_image_from_path(fs::path);
-
+	void infer_pgm_image_from_path(std::string);
 
 private:
+
+	/* Nabla struct for SGD updates
+	 *
+	 * Nabla contains the ..........
+	 * TODO: fill with an accurate description of the partial derivatvies
+	 */
+	struct nabla {
+		VectorXf bias;
+		MatrixXf weights;
+
+		nabla(unsigned int c_dim, unsigned int p_dim)
+		{
+			bias = VectorXf::Zero(c_dim);
+			weights = MatrixXf::Zero(c_dim, p_dim);
+		}
+
+		void zero_out()
+		{
+			bias = VectorXf::Zero(bias.rows());
+			weights = MatrixXf::Zero(weights.rows(), weights.cols());
+		}
+
+		void accumulate(nabla& n)
+		{
+			// TODO : Add Asserts here
+			bias += n.bias;
+			weights += n.weights;
+		}
+	};
 
 	/* Layer struct for each Network layer
 	 *
@@ -94,44 +115,82 @@ private:
 		MatrixXf weights;
 		VectorXf bias;
 
-		layer(unsigned int c_dim, unsigned int p_dim) {
-			weights = MatrixXf(c_dim, p_dim);
-			bias = VectorXf(c_dim);
+		layer(unsigned int c_dim, unsigned int p_dim)
+		{
+			weights = MatrixXf::Random(c_dim, p_dim);
+			bias = VectorXf::Random(c_dim);
+		}
+
+		/* Update the weights and bias using the nabla
+		 *
+		 * @param n - Nablas with which to update
+		 */
+		void update(nabla& n)
+		{
+			float factor = ETA / BATCH_SIZE;
+			weights = weights - (factor * n.weights);
+			bias = bias - (factor * n.bias);
 		}
 	};
 
-	/* Infer current image of a handwritten digit using the network */
-	int infer_image()
+	/* Infer current image of a handwritten digit using the network
+	 *
+	 * @param image - Column vector of image values to infer
+	 * @returns max - argmax of the output layer of neurons */
+	Index predict(VectorXf& image)
 	{
-		VectorXf a = feed_forward();
-		float best = -1;
-		int id = -1;
-		for (std::size_t k = 0; k < a.size(); k++)
-		{
-			if (best < a(k))
-			{
-				best = a(k);
-				id = k;
-			}
-		}
-		display_vector(a);
-		return id;
+		Index max;
+		VectorXf activation = feed_forward(image);
+		activation.maxCoeff(&max);
+		return max;
 	}
 
 	/* Initialize random weights and biases in the network */
 	void generate_random_weights()
 	{
+		// TODO: Add a version that uses pcg_random
 	}
 
 	/* Mini Batched Stochastic Gradient Descend Algorithm
 	 *
-	 * Reference implementation from http://neuralnetworksanddeeplearning.com
+	 * Reference implementation from
+	 * http://neuralnetworksanddeeplearning.com
 	 */
 	void mini_batch_sgd()
 	{
+		// Initialize Nabla matrixes
+		std::vector<nabla> nablas;
+		for (std::size_t i = 0; i < network.size(); i++)
+			nablas.push_back(
+					 nabla(network[i].weights.rows(),
+					       network[i].weights.cols())
+					 );
+
+		// Go through the training data by batches
+		for (std::size_t i = 0; i < mnist_loader::train.size()
+			     ; i += BATCH_SIZE)
+		{
+			// Zero out the nabla matrixes
+			for (std::size_t j = 0; j < nablas.size(); j++)
+				nablas[j].zero_out();
+
+			// Perform Backpropagation on the batch
+			for (std::size_t j = 0; j < BATCH_SIZE; j++)
+				back_propogate(nablas,
+					       mnist_loader::train[i+j].data,
+					       mnist_loader::train[i+j].label);
+
+			// Update the weights and biases of the network
+			for (std::size_t j = 0; j < network.size(); j++)
+				network[j].update(nablas[j]);
+		}
 	}
 
-	VectorXf feed_forward()
+	/* Feed Forward run
+	 *
+	 * @param image - Column vector of image values to be infered
+	 * @returns activations - Output layer of HDRNN */
+	VectorXf feed_forward(VectorXf &image)
 	{
 		VectorXf activations = image;
 		for (std::size_t k = 0; k < network.size(); k++)
@@ -141,15 +200,72 @@ private:
 		return activations;
 	}
 
-	void back_propogate()
+	/* Back Propagation run
+	 *
+	 * @param batach_nablas - Vector of nablas to update
+	 * @param image  - Image to perform forward pass on
+	 * @param label  - Label of passed image
+	 * @param updates - Nabla values for bias and weight updates
+	 */
+	void back_propogate(
+			    std::vector<nabla>& batch_nablas,
+			    VectorXf &image, unsigned int label
+			    )
 	{
+		// Initialize Nabla matrixes and activations
+		std::vector<nabla> nablas;
+		std::size_t num_layers = network.size() + 1;
+		for (std::size_t i = 0; i < network.size(); i++)
+			nablas.push_back(
+					 nabla(network[i].weights.rows(),
+					       network[i].weights.cols())
+					 );
+
+		std::vector<VectorXf> activations;
+		VectorXf activation = image;
+		activations.push_back(activation);
+ 
+		// Feed forward
+		std::vector<VectorXf> zs;
+		VectorXf z;
+		for (std::size_t i = 0; i < network.size(); i++)
+		{
+			z = (network[i].weights * activation)
+				+ network[i].bias;
+			zs.push_back(z);
+			activation = z.unaryExpr(&sigmoid);
+			activations.push_back(activation);
+		}
+
+		// Backward pass
+		VectorXf y = VectorXf::Zero(OUTPUT_LAYER_SIZE);
+		y[label] = 1;
+		VectorXf delta = (activation - y)
+			.cwiseProduct(z.unaryExpr(&sigmoid_prime));
+		nablas[num_layers-2].bias += delta;
+		nablas[num_layers-2].weights += (delta
+					       * activations[num_layers-2]
+					       .transpose());
+
+		VectorXf sp;
+		for (std::size_t i = num_layers-2; i > 0; i--)
+		{
+			z = zs[i-1];
+			sp = z.unaryExpr(&sigmoid_prime);
+			delta = (network[i].weights.transpose() * delta)
+				.cwiseProduct(sp);
+			nablas[i-1].bias += delta;
+			// TODO : fix the i-1 in activations
+			nablas[i-1].weights += (delta
+						* activations[i-1]
+						.transpose());
+		}
+
+		// Accumulate the new nablas
+		for (std::size_t i = 0; i < batch_nablas.size(); i++)
+			batch_nablas[i].accumulate(nablas[i]);
 	}
 
-	unsigned int epochs = EPOCHS;
-	unsigned int batch_size = BATCH_SIZE;
-	float eta = ETA;
-
-	Matrix<float, 1, INPUT_LAYER_SIZE> image;
 	std::vector<layer> network;
 };
 
@@ -184,12 +300,20 @@ hdrnn::~hdrnn()
  * Notes: Replaces the weights in the current network
  *        Displays the accuracy of the network after each epoch
  */
-void hdrnn::train_hdrnn()
+void hdrnn::train_hdrnn(std::string dataset)
 {
-	for (int i = 0; i < epochs; i++)
+	mnist_loader::read_mnist(dataset);
+	// TODO: Generate PCG-based weights and bias initializations
+	for (unsigned int i = 0; i < EPOCHS; i++)
 	{
+		std::random_device r;
+		std::default_random_engine e1(r());
+		// std::shuffle(
+		//      std::begin(mnist_loader::train),
+		//      std::end(mnist_loader::train), e1
+		//     );
 		mini_batch_sgd();
-		evaluate_hdrnn();
+		evaluate_hdrnn(i);
 	}
 }
 
@@ -197,16 +321,72 @@ void hdrnn::train_hdrnn()
  *
  * Note : Prints out the current accuracy of the network
  */
-void hdrnn::evaluate_hdrnn()
+void hdrnn::evaluate_hdrnn(unsigned int epoch)
 {
+	unsigned int count = 0;
+	for (std::size_t i = 0; i < mnist_loader::test.size(); i++)
+		if (
+		    static_cast<unsigned int>(
+					      predict(mnist_loader::test[i].data))
+		    == mnist_loader::test[i].label
+		    )
+			count += 1;
+	std::cout << "Epoch : " << epoch
+		  << " Network has classified "
+		  << count << "/"
+		  << mnist_loader::test.size()
+		  << " correctly" << std::endl;
 }
 
 /* Loads files with weights and biases to update the same on the network
  *
  * Note : Creates files with the weights and biases of the network
  */
-void hdrnn::dump_hdrnn(fs::path w_file, fs::path b_file) const
+void hdrnn::dump_hdrnn(std::string w_file, std::string b_file) const
 {
+	// File output streams for weights and biases file
+	std::ofstream w_stream, b_stream;
+
+	// Open the weight file
+	w_stream.open(w_file);
+	if (!w_stream)
+	{
+		std::cerr << "Could not open weights file" << std::endl;
+		std::exit(EXIT_FAILURE);
+	}
+
+	// Open the bias file
+	b_stream.open(b_file);
+	if (!b_stream)
+	{
+		std::cerr << "Could not open bias file" << std::endl;
+		std::exit(EXIT_FAILURE);
+	}
+
+	// Write the file contents
+	for (std::size_t k = 0; k < network.size(); k++)
+	{
+		std::size_t w_dim1 = network[k].weights.rows();
+		std::size_t w_dim2 = network[k].weights.cols();
+		std::size_t b_dim  = network[k].bias.cols();
+
+		w_stream << w_dim1 << std::endl
+			 << w_dim2 << std::endl;
+		b_stream << b_dim << std::endl;
+
+		// TODO: Add asserts here for w_dim1 == b_dim
+		for (unsigned int i = 0; i < w_dim1; i++)
+		{
+			b_stream << network[k].bias(i) << std::endl;
+			for (unsigned int j = 0; j < w_dim2; j++)
+				w_stream << network[k].weights(i, j)
+					 << std::endl;
+		}
+	}
+
+	// close file streams
+	w_stream.close();
+	b_stream.close();
 }
 
 // TODO: Create a better standard format for weights, biases files
@@ -215,7 +395,7 @@ void hdrnn::dump_hdrnn(fs::path w_file, fs::path b_file) const
  *
  * Note : Updates the weights and biases on the network
  */
-void hdrnn::load_hdrnn(fs::path w_file, fs::path b_file)
+void hdrnn::load_hdrnn(std::string w_file, std::string b_file)
 {
 	// File input streams for weights and biases file
 	std::ifstream w_stream, b_stream;
@@ -270,7 +450,7 @@ void hdrnn::load_hdrnn(fs::path w_file, fs::path b_file)
  *        Outputs the digit that the HDRNN thinks the image represents
 v * i_file - filename of a PGM image (in a particular format)
  */
-void hdrnn::infer_pgm_image_from_path(fs::path i_file)
+void hdrnn::infer_pgm_image_from_path(std::string i_file)
 {
 	// File input stream for image file
 	std::ifstream i_stream;
@@ -283,19 +463,20 @@ void hdrnn::infer_pgm_image_from_path(fs::path i_file)
 		std::exit(EXIT_FAILURE);
 	}
 
+	VectorXf image = VectorXf(INPUT_LAYER_SIZE);
 	float x;
 
-	// seek to position 3 to ignore PGM boilerplate
-	i_stream.seekg(3);
+	// seek to ignore PGM boilerplate
+	i_stream.seekg(13);
 
 	// read the image file into hdrnn image
 	for (unsigned int i = 0; i < INPUT_LAYER_SIZE; i++)
 	{
 		i_stream >> x;
-		image(i) = x / 255;
+		image[i] = x / 255;
 	}
 
-	std::cout << infer_image() << std::endl;
+	std::cout << predict(image) << std::endl;
 }
 
 #endif // HDRNN_HDRNN_H

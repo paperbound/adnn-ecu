@@ -180,7 +180,6 @@ void load_mnist()
 		train_image_char, info_image);
 	image_char2float(NUM_TRAIN,
 		train_image_char, train_images);
-
 	read_mnist(TRAIN_IMAGE, NUM_VALIDATE, NUM_TRAIN, LEN_INFO_IMAGE, SIZE,
 		validate_image_char, info_image);
 	image_char2float(NUM_VALIDATE,

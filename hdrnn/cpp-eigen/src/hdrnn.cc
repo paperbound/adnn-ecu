@@ -4,9 +4,9 @@
  *
  */
 
-#include <filesystem>
 #include <gflags/gflags.h>
 #include <iostream>
+#include <sys/stat.h>
 
 #include "hdrnn.h"
 
@@ -14,12 +14,21 @@ DEFINE_string(train, "", "Path to the training data for HDRNN");
 DEFINE_string(weights, "./weights", "File path to dump HDRNN weights");
 DEFINE_string(bias, "./bias", "File path to dump HDRNN biases");
 
-namespace fs = std::__fs::filesystem;
+bool check_file(std::string path)
+{
+	struct stat buffer;
+	if (stat(path.c_str(), &buffer) != 0)
+	{
+		std::cerr << "Could not find the file: " << path << std::endl;
+		return false;
+	}
+	return true;
+}
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
 	gflags::SetUsageMessage("Usage: hdr [-train] [-weights (file)] "
-				"[-bias (file)]");
+							"[-bias (file)]");
 	gflags::ParseCommandLineFlags(&argc, &argv, true);
 
 	// TODO: allow after porting mnist.h
@@ -31,15 +40,17 @@ int main(int argc, char* argv[])
 
 	if (FLAGS_train.length() > 0) // train HDRNN
 	{
-		// attempt to find the dataset directory
-		fs::file_status dd_status = fs::status(FLAGS_train);
-		if (!fs::exists(dd_status))
-		{
-			std::cerr << "Could not find the dataset" << std::endl;
+		// attempt to find the dataset
+		if (!(
+				check_file(FLAGS_train)
+				&& check_file(FLAGS_train + TRAIN_IMAGE)
+				&& check_file(FLAGS_train + TRAIN_LABEL)
+				&& check_file(FLAGS_train + TEST_IMAGE)
+				&& check_file(FLAGS_train + TEST_LABEL))
+			)
 			return -1;
-		}
-		// network.train_hdrnn();
-		// network.dump_hdrnn(FLAGS_weights, FLAGS_bias);
+		network.train_hdrnn(FLAGS_train);
+		network.dump_hdrnn(FLAGS_weights, FLAGS_bias);
 		trained = true;
 	}
 
@@ -48,27 +59,18 @@ int main(int argc, char* argv[])
 		if (!trained)
 		{
 			// attempt to load weights and biases into the network
-			fs::file_status w_status = fs::status(FLAGS_weights);
-			fs::file_status b_status = fs::status(FLAGS_bias);
-			if (!fs::exists(w_status) || !fs::exists(b_status))
-			{
-				std::cerr << "Could not find the files to load" << std::endl;
+			if (!check_file(FLAGS_weights) || !check_file(FLAGS_bias))
 				return -1;
-			}
+
 			network.load_hdrnn(FLAGS_weights, FLAGS_bias);
 		}
 
-		// attempt to find the image file
-		for (unsigned int i = 1; i < argc; i++)
+		// attempt to find the image files
+		for (int i = 1; i < argc; i++)
 		{
 			std::string filename(argv[i]);
-			fs::file_status i_status = fs::status(filename);
-			if (!fs::exists(i_status))
-			{
-				std::cerr << "Could not find image file: " << filename << std::endl;
-			} else {
+			if (check_file(filename))
 				network.infer_pgm_image_from_path(filename);
-			}
 		}
 	}
 
