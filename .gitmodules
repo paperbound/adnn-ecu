@@ -16,3 +16,6 @@
 [submodule "hdrnn/cpp-eigen/submodules/pcg-cpp"]
 	path = hdrnn/cpp-eigen/submodules/pcg-cpp
 	url = https://github.com/imneme/pcg-cpp.git
+[submodule "hdrnn/c-cmsis-nn/submodules/CMSIS-NN"]
+	path = hdrnn/c-cmsis-nn/submodules/CMSIS-NN
+	url = https://github.com/ARM-software/CMSIS-NN.git
