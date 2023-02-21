@@ -16,7 +16,6 @@ Benchmarking activity is currenlty pending
 - [x] Complete an inference run
 - [x] Complete a training run
 - [x] Test on EB / BBB
-- [ ] Change current (argc, argv) handling
 - [ ] Figure out perf tests
 - [ ] Benchmark Training
 
@@ -26,7 +25,6 @@ Benchmarking activity is currenlty pending
 - [x] Complete an inference run
 - [x] Complete a training run
 - [ ] Test on EB / BBB
-- [ ] Change current (argc, argv) handling
 - [ ] Figure out perf tests
 - [ ] Benchmark Training
 
@@ -46,6 +44,7 @@ C based implementation of HDRNN
 - [ ] Change current (argc, argv) handling
 - [ ] Figure out perf tests
 - [ ] Benchmark Training
+- [ ] Possibly remove lib-c dependency
 
 ## cpp-eigen
 
@@ -57,6 +56,5 @@ CPP based implementation of HDRNN using the Eigen vector library
 - [ ] Create debug/release configurations into cmake
 - [ ] Complete a training run
 - [ ] Test on EB / BBB
-- [ ] Change current (argc, argv) handling
 - [ ] Figure out perf tests
 - [ ] Benchmark Training
