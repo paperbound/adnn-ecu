@@ -16,6 +16,7 @@ The binary will be written to the `bin/` folder created above
 
 ## Generate Sample Images
 
+Create a tests folder if not already present `mkdir tests/` inside `hdrnn/c-math.h/`
 Once the MNIST dataset is downloaded, run `make sample-image`
 
 To generate a different image run,
