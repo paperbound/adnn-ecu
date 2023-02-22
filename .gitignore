@@ -11,3 +11,6 @@ sdk
 log_*
 bias*
 weights*
+
+#dataset
+mnist*
