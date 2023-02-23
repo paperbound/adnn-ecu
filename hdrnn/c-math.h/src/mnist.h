@@ -127,7 +127,7 @@ static void image_char2float(int num_data,
 {
 	for (int i = 0; i < num_data; i++)
 		for (int j = 0; j < SIZE; j++)
-			data_image[i][j] = (float)data_image_char[i][j] / 255.0;
+			data_image[i][j] = (float)data_image_char[i][j] / 256.0;
 }
 
 /* Convert Label from Character to Integer */
@@ -180,7 +180,6 @@ void load_mnist()
 		train_image_char, info_image);
 	image_char2float(NUM_TRAIN,
 		train_image_char, train_images);
-
 	read_mnist(TRAIN_IMAGE, NUM_VALIDATE, NUM_TRAIN, LEN_INFO_IMAGE, SIZE,
 		validate_image_char, info_image);
 	image_char2float(NUM_VALIDATE,

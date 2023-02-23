@@ -6,3 +6,11 @@ build
 
 # poky sdk folder
 sdk
+
+#logs
+log_*
+bias*
+weights*
+
+#dataset
+mnist*

@@ -73,3 +73,5 @@ Current setup for development using the beagle bone involves using the kernel bo
 ### Creating a Machine Configuration
 
 _This part will be added in later while developing a machine configuration for the C300_
+
+## Yocto tools
