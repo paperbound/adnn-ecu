@@ -12,5 +12,10 @@ log_*
 bias*
 weights*
 
+#image
+*.png
+*.jpg
+*.jpeg
+
 #dataset
 mnist*
