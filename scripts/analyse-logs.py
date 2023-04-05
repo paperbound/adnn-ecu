@@ -7,11 +7,13 @@
 ##########################################################################
 import os
 import re
+import json
+import csv
 
 # os.chdir('../hdrnn/c-math.h/logs/')
 c_path = '../../GNUtime_C_logs/'
 numpy_path = ('../../GNUtime_numpy_logs/')
-eigen_path = ('../cpp-eigen/')
+eigen_path = ('../../cpp-eigen-logs/')
 
 c_accr_pattern = 'Network classified \d*'
 numpy_accr_pattern = 'Epoch 29: \d*'
@@ -34,7 +36,7 @@ Network_Size = {'Test1': [784,2,10],
                 # 'Test10': [784,1024,10],
                 'Test11': [784,32,16,10],
                 # 'Test12': [784,64,16,10],
-                # 'Test13': [784,128,16,10],
+                'Test13': [784,128,16,10],
                 # 'Test14': [784,256,16,10],
                 # 'Test15': [784,512,16,10],
                 }
@@ -113,4 +115,8 @@ result['Accuracy'] = [round((i / (trail_no + 1)),2) for i in result['Accuracy']]
 result['ExecTime'] = [round((i / (trail_no + 1)),2) for i in result['ExecTime']]
 result['PeakMemory'] = [round((i / (trail_no + 1)),2) for i in result['PeakMemory']]
 
+
+with open("results.txt", 'w') as f: 
+    f.write(json.dumps(result))
 print(result)
+
