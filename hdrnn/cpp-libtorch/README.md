@@ -2,6 +2,8 @@
 
 Derived from example application provided by `torch`
 
+Building this project requires the use of libtorch library
+
 ## Compiling
 
 Create a build directory, run cmake with path to libtorch
