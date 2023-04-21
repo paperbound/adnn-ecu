@@ -14,10 +14,12 @@ import csv
 c_path = '../../GNUtime_C_logs/'
 numpy_path = ('../../GNUtime_numpy_logs/')
 eigen_path = ('../../cpp-eigen-logs/')
+pytorch_path = ('../hdrnn/pytorch/logs_singlethreaded/')
 
 c_accr_pattern = 'Network classified \d*'
 numpy_accr_pattern = 'Epoch 29: \d*'
 eigen_accr_pattern = 'Epoch : 29 [\w\d/ ]+'
+pytorch_accr_pattern = 'Epoch: 30 [\w\d/|:. ]+'
 
 perf_time_pattern = '\d*.\d* seconds time elapsed'
 gnu_user_time_pattern = 'User time[\w():. ]+'
@@ -36,7 +38,7 @@ Network_Size = {'Test1': [784,2,10],
                 # 'Test10': [784,1024,10],
                 'Test11': [784,32,16,10],
                 # 'Test12': [784,64,16,10],
-                'Test13': [784,128,16,10],
+                # 'Test13': [784,128,16,10],
                 # 'Test14': [784,256,16,10],
                 # 'Test15': [784,512,16,10],
                 }
@@ -68,7 +70,10 @@ def get_accr(trail_no, test_id, impl_type):
         path = eigen_path
         pattern = eigen_accr_pattern
         filename = path + 'logs/trail{0}/log_{1}_accr.txt'.format(trail_no, test_id)
-    
+    elif impl_type == 'pytorch':
+        path = pytorch_path
+        pattern = pytorch_accr_pattern
+        filename = path + 'logs/trail{0}/log_{1}_accr.txt'.format(trail_no, test_id)
     f = open(filename, 'r')
     matches = re.findall(r'{0}'.format(pattern), f.read())
     accuracy = int(re.search(r'\d\d\d\d', matches[-1]).group()) / 100
@@ -82,6 +87,9 @@ def get_memory_time(trail_no, test_id, impl_type):
         path = numpy_path
     elif impl_type == 'eigen':
         path = eigen_path
+    elif impl_type == 'pytorch':
+        path = pytorch_path
+    
     #Get User time
     f = open(path + 'logs/trail{0}/log_{1}_perf.txt'.format(trail_no, test_id), 'r')   
     matches = re.findall(r'{0}'.format(gnu_user_time_pattern), f.read())
@@ -100,10 +108,10 @@ def get_memory_time(trail_no, test_id, impl_type):
     return (exec_time / 60) , (peak_memory /1000)
 
 impl_type = ''
-while (impl_type != 'c') and (impl_type != 'numpy') and (impl_type != 'eigen'):
-    impl_type = input('Enter Implementation type to collect logs (Options: c, numpy or eigen):')
+while (impl_type != 'c') and (impl_type != 'numpy') and (impl_type != 'eigen') and (impl_type != 'pytorch'):
+    impl_type = input('Enter Implementation type to collect logs (Options: c, numpy, eigen or pytorch):')
 
-for trail_no in range(1):
+for trail_no in range(10):
     for index, (test_id, value) in enumerate(Network_Size.items()):
         result["Network"][index] = calc_nparams(value)
         result['Accuracy'][index] += get_accr(trail_no, test_id, impl_type)
