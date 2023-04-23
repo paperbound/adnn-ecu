@@ -1,2 +1,4 @@
 *.zip
 logs_*
+# Libtorch folder used for builds
+libtorch
