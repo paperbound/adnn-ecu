@@ -52,6 +52,14 @@ for i in range(10):
             os.system(cmd1 + '\n' + cmd2 + '\n' + cmd3 + '\n' + cmd4 + '\n' + cmd5)
 
         elif len(nw_size) == 4:
+            # deleting everything
+            cmd1 = 'sed -i \'s/fc3 = register_modul.*//g\' build/mnist.cpp'
+            #Editing the second part
+            cmd2 = 'sed -i \'s/x = torch::sigmoid(fc3.*//g\' build/mnist.cpp'
+            #Editing the third part
+            cmd3 = 'sed -i \'s/torch::nn::Linear fc1{nullptr}, fc2{nullptr}, fc3.*/torch::nn::Linear fc1{nullptr}, fc2{nullptr};/g\' build/mnist.cpp'
+            os.system(cmd1 + '\n' + cmd2 + '\n' + cmd3)
+            
             #Editing the first part
             cmd1 = 'sed -i \'s/fc1 = register_modul.*/fc1 = register_module("fc1", torch::nn::Linear(784, ' + str(nw_size[1]) + '));/g\' build/mnist.cpp'
             cmd2 = 'sed -i \'s/fc2 = register_modul.*/fc2 = register_module("fc2", torch::nn::Linear(' + str(nw_size[1]) + ', ' + str(nw_size[2]) + '));/g\' build/mnist.cpp'
