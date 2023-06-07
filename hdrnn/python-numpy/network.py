@@ -12,10 +12,12 @@ and omits many desirable features.
 # Libraries
 # Standard library
 import random
+import struct
 
 # Third-party libraries
 import numpy as np
 
+MAGIC = 7
 
 class Network(object):
 
@@ -133,23 +135,31 @@ class Network(object):
         \partial a for the output activations."""
         return (output_activations-y)
 
-    def dump_weights(self, biasfile, weightsfile):
-        """Dump the Weights to a File """
-        np.set_printoptions(formatter={'float': '{: 2.9f}'.format})
-        with open(biasfile, 'w') as f:
+    def load_weights(self, biases, weights):
+        """Load similar weights and biases if possible"""
+        loaded_biases, loaded_weights = False, False
+        if len(biases) == len(self.biases):
+            self.biases = biases
+            loaded_biases = True
+        if len(weights) == len(self.weights):
+            self.weights = weights
+            loaded_weights = True
+        return loaded_biases and loaded_weights
+
+    def dump_weights(self, nfile):
+        """Dump the Weights to a File"""
+        with open(nfile, 'wb') as f:
+            f.write(bytes([MAGIC]))
+            f.write(bytes([len(self.sizes)-2]))
+            for x in self.sizes[1:-1]:
+                f.write(bytes([x]))
             for bias in self.biases:
-                f.write(str(bias.shape[0]) + '\n')
                 for b in bias:
-                    f.write(str(b)[1:-1] + '\n')
-        with open(weightsfile, 'w') as f:
-            for weights in self.weights:
-                f.write(str(weights.shape[0]) + '\n')
-                f.write(str(weights.shape[1]) + '\n')
-                for weight in weights:
-                    for w in str(weight)[1:-1].split(' '):
-                        w = w.strip()
-                        if len(w) > 0:
-                            f.write(w + '\n')
+                    f.write(struct.pack('f', b))
+            for warray in self.weights:
+                for wrow in warray:
+                    for w in wrow:
+                        f.write(struct.pack('f', w))
 
 # Miscellaneous functions
 
