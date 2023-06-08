@@ -10,6 +10,8 @@
 
 #include "mnist.h"
 
+char *ifile = "images/7.pgm";
+
 extern unsigned char test_image_char[NUM_TEST][SIZE];
 extern float image[SIZE];
 

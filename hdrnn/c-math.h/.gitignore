@@ -4,9 +4,8 @@ bin/*
 # dataset
 dataset/*
 
-# tests
-tests/
+# sample images
+images/
 
 # network calculations
-bias/*
-weights/*
+results/*

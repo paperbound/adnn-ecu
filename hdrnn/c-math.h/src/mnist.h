@@ -21,7 +21,9 @@
 
 /* Image Parameters */
 
+#define DIMENSION 28
 #define SIZE 784 // 28*28
+#define DIGITS 10 // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
 
 #define NUM_TRAIN 50000
 #define NUM_VALIDATE 10000

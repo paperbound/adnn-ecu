@@ -9,26 +9,31 @@
 #define NETWORK_H
 
 #include <math.h>
-#include <string.h>
-#include <time.h>
+#include <string.h> // for memset
+#include <stdbool.h>
 
 #include "images.h"
 #include "random.h"
 
-/* Hyperparameters */
+/* Output the network */
+bool quiet = false;
+char *nfile = "c-math.nn";
+const unsigned char MAGIC = 7;
 
-int epochs = 30;
-int batchSize = 10;
-float eta = 3;
+/* Image file */
+extern char *ifile;
 
-#define INPUT_LAYER_SIZE 784
-#define OUTPUT_LAYER_SIZE 10
+/* Default network */
+unsigned int depth = 3;
+unsigned int default_shape[] = {784, 30, 10};
+unsigned int *shape = default_shape;
 
-// Using just the one hidden layer
-#define HIDDEN_LAYER_SIZE 30
+/* (Default) Hyperparameters */
+unsigned int epochs = 30;
+unsigned int batchSize = 10;
+float eta = 3.0f;
 
 /* MNIST Dataset */
-
 extern float train_images[NUM_TRAIN][SIZE];
 extern float test_images[NUM_TEST][SIZE];
 extern int train_labels[NUM_TRAIN];
@@ -37,12 +42,10 @@ extern int test_labels[NUM_TEST];
 extern int info_image[LEN_INFO_IMAGE];
 extern int info_label[LEN_INFO_LABEL];
 
-/* Current Image */
-
-extern float image[SIZE]; // input layer / loaded image
+/* Current Image (Input Layer or Loaded Image)*/
+extern float image[SIZE];
 
 /* HDR Neural Network */
-
 typedef struct
 {
 	float bias;
@@ -60,19 +63,16 @@ typedef struct LayerT
 	float *nabla_b;
 	struct LayerT *next;
 	struct LayerT *previous;
-} Layer;
+} Layer; // Network layers except for input
 
 typedef struct
 {
 	Layer *layers;
 	int depth;
-} Network;
+} Network; // HDRNN
 
 static float sigmoid(float);
 static float sigmoid_prime(float);
-
-static int get_integer(FILE *);
-static float get_float(FILE *);
 
 static int prediction(Network *);
 
@@ -86,18 +86,23 @@ static void back_propogate(Network *, float *);
 
 /* HDRNN Neural Network
  *
- * Input Layer -> Hidden Layer -> Output Layer
- *  (image)
+ * Input Layer -> Hidden Layer(s) -> Output Layer
  */
 void initHDRNN(Network *network)
 {
 	// Network Initialisations
-	// Start with no first layer
-	// feedforward() assumes image as first set of activations
-	network->depth = 3;
+	// * Start with no first layer
+	// * feedforward() assumes _image_ as first set of activations
 
-	add_layer(network, HIDDEN_LAYER_SIZE, INPUT_LAYER_SIZE);
-	add_layer(network, OUTPUT_LAYER_SIZE, HIDDEN_LAYER_SIZE);
+	unsigned int incidents, size;
+	incidents = SIZE; // First layer is 784 (image size)
+
+	for (size_t i = 1; i < depth; i++)
+	{
+		size = shape[i];
+		add_layer(network, size, incidents);
+		incidents = size;
+	}
 }
 
 static void add_layer(Network *network, int size, int incidents)
@@ -156,115 +161,118 @@ void generate_random_weights(Network *network)
 	}
 }
 
-/* TODO: Fix the ugly getline stuff later */
-static int get_integer(FILE *fd)
-{
-	// getline
-	int rows;
-	size_t llen = 21;
-	char *line = (char *)calloc(llen, sizeof(char));
-
-	if (getline(&line, &llen, fd) == -1)
-	{
-		fprintf(stderr, "Couldn't read Rows\n");
-		exit(-1);
-	}
-	if (sscanf(line, "%d", &rows) == EOF)
-	{
-		fprintf(stderr, "Couldn't parse Rows\n");
-		exit(1);
-	}
-	free(line);
-	return rows;
-}
-
-/* TODO: Fix the ugly getline stuff later */
-static float get_float(FILE *fd)
-{
-	// getline
-	float value;
-	size_t llen = 21;
-	char *line = (char *)calloc(llen, sizeof(char));
-
-	if (getline(&line, &llen, fd) == -1)
-	{
-		fprintf(stderr, "Couldn't read Bias");
-		exit(-1);
-	}
-	if (sscanf(line, "%f", &value) == EOF)
-	{
-		fprintf(stderr, "Couldn't parse Rows");
-		exit(1);
-	}
-	free(line);
-	return value;
-}
-
-/* Load csv file of weights into the Network
- * weights into network
+/* Load net description file into the network
  */
-void loadHDRNN(Network *network, char *wfile, char *bfile)
+void loadHDRNN(Network *network)
 {
 	FILE *fd;
-	int rows, cols;
+	unsigned int size;
+	size_t ret_code;
 
-	// bias
-
-	if ((fd = fopen(bfile, "r")) == NULL)
+	if ((fd = fopen(nfile, "rb")) == NULL)
 	{
-		fprintf(stderr, "couldn't open bias file\n");
+		fprintf(stderr, "couldn't open net file\n");
 		exit(-1);
 	}
 
-	Layer *layer = network->layers;
-	while (layer != NULL)
+	ret_code = fread(&size, 1, 1, fd);
+	if (ret_code != 1)
 	{
-		rows = get_integer(fd);
-		if (rows != layer->size)
-		{
-			fprintf(stderr, "sizes dont match\n");
-			exit(-1);
-		}
-		for (int i = 0; i < rows; i++)
-			layer->neurons[i].bias = get_float(fd);
-		layer = layer->next;
-	}
-
-	fclose(fd);
-
-	// weights
-
-	if ((fd = fopen(wfile, "r")) == NULL)
-	{
-		fprintf(stderr, "couldn't open weight file\n");
+		fprintf(stderr, "error reading net file, magic\n");
 		exit(-1);
 	}
 
-	layer = network->layers;
-	while (layer != NULL)
+	// size should have magic value
+	if (size != MAGIC)
 	{
-		rows = get_integer(fd);
-		cols = get_integer(fd);
-		if (rows != layer->size || cols != layer->incidents)
+		fprintf(stderr, "could not verify magic value, found %d\n", size);
+		exit(-1);
+	}
+
+	size = 0;
+	ret_code = fread(&size, 1, 1, fd);
+	if (ret_code != 1)
+	{
+		fprintf(stderr, "error reading net file, size\n");
+		exit(-1);
+	}
+
+	// Get the shape
+	depth = size + 2;
+	shape = (unsigned int *) calloc(depth, sizeof(int));
+	unsigned int value, index;
+
+	shape[0] = SIZE; // input layer size is 784
+	index = 1;
+
+	// Read in shape
+	for (unsigned int i = 0; i < size; i++)
+	{
+		value = 0;
+		ret_code = fread(&value, 1, 1, fd);
+		if (ret_code != 1)
 		{
-			fprintf(stderr, "sizes dont match");
+			fprintf(stderr, "error reading net file, shape\n");
 			exit(-1);
 		}
-		for (int i = 0; i < rows; i++)
-			for (int j = 0; j < cols; j++)
-				layer->neurons[i].weights[j] = get_float(fd);
+		shape[index] = value;
+		index += 1;
+	}
+
+	shape[index] = DIGITS; // output layer size
+
+	initHDRNN(network);
+
+	// Read Biases
+	size_t lsize;
+	Layer *layer = network->layers; // first layer
+
+	for (size_t i = 1; i < depth; i++)
+	{
+		lsize = shape[i];
+		for (size_t j = 0; j < lsize; j++)
+		{
+			ret_code = fread(&(layer->neurons[j].bias), sizeof(float), 1, fd);
+			if (ret_code != 1)
+			{
+				fprintf(stderr, "error reading net file, bias\n");
+				exit(-1);
+			}
+		}
 		layer = layer->next;
+	}
+
+	// Read Weights
+	layer = network->layers; // go back to first layer
+
+	size_t incidents;
+	incidents = SIZE; // First layer is 784 (image size)
+
+	for (size_t i = 1; i < depth; i++)
+	{
+		lsize = shape[i];
+		for (size_t j = 0; j < lsize; j++)
+		{
+			ret_code = fread(layer->neurons[j].weights, sizeof(float), incidents, fd);
+			if (ret_code != incidents)
+			{
+				fprintf(stderr, "error reading net file, weights\n");
+				exit(-1);
+			}
+		}
+		layer = layer->next;
+		incidents = lsize;
 	}
 
 	fclose(fd);
 }
 
-void inferImage(Network *network, char *wfile)
+void inferImage(Network *network)
 {
-	load_infer_image(wfile);
+	load_infer_image(ifile);
 	feed_forward(network, image);
-	int pred = prediction(network);
-	for (int i = 0; i < SIZE; i++)
+	unsigned short pred = prediction(network);
+	for (unsigned short i = 0; i < SIZE; i++)
 	{
 		if (image[i] != 0)
 		{
@@ -273,7 +281,7 @@ void inferImage(Network *network, char *wfile)
 		{
 			printf("  ");
 		}
-		if ( (i+1) % 28 == 0)
+		if ( (i+1) % DIMENSION == 0)
 			printf("\n");
 	}
 	printf("Network predicts %d\n", pred);
@@ -305,12 +313,13 @@ void test_network(Network *network)
 	printf("Network classified %d (%d) images correctly\n", correct, NUM_TEST);
 }
 
-void trainHDRNN(Network *network)
+void trainHDRNN(Network *network, bool quiet)
 {
 	for (int i = 0; i < epochs; i++)
 	{
 		mini_batch_sgd(network);
-		test_network(network);
+		if (!quiet)
+			test_network(network);
 	}
 }
 
@@ -320,9 +329,9 @@ static void mini_batch_sgd(Network *network)
 {
 	// Batch Allocations
 	float factor = eta / batchSize;
-	float **nabla_b = calloc(network->depth - 1, sizeof(float *));
-	float ***nabla_w = calloc(network->depth - 1, sizeof(float **));
-	float label[OUTPUT_LAYER_SIZE] = {0};
+	float **nabla_b = calloc(depth - 1, sizeof(float *));
+	float ***nabla_w = calloc(depth - 1, sizeof(float **));
+	float label[DIGITS] = {0};
 
 	int k = 0;
 	Layer *layer = network->layers;
@@ -357,7 +366,7 @@ static void mini_batch_sgd(Network *network)
 
 			// Load training image and label
 			load_train_image(i + j);
-			memset(label, 0, OUTPUT_LAYER_SIZE * sizeof(float));
+			memset(label, 0, DIGITS * sizeof(float));
 			label[get_train_label(i + j)] = 1;
 
 			// Back propagation
@@ -442,7 +451,7 @@ static int prediction(Network *network)
 	while (output_layer != NULL && output_layer->next != NULL)
 		output_layer = output_layer->next;
 
-	for (int i = 0; i < OUTPUT_LAYER_SIZE; i++)
+	for (int i = 0; i < DIGITS; i++)
 	{
 		if (highest < output_layer->activations[i])
 		{
@@ -542,48 +551,62 @@ static void back_propogate(Network *network, float *label)
 	}
 }
 
-/* Dump csv file of weights and biases
+/* Dump the network in network description file format
  */
-void dumpWeights(Network *network, char *wfile, char *bfile)
+void dumpWeights(Network *network)
 {
 	FILE *fd;
 
-	// bias
-
-	if ((fd = fopen(bfile, "w")) == NULL)
+	if ((fd = fopen(nfile, "wb")) == NULL)
 	{
-		fprintf(stderr, "couldn't open bias file %s\n", bfile);
+		fprintf(stderr, "couldn't open net file %s to write\n", nfile);
 		exit(-1);
 	}
 
-	Layer *layer = network->layers;
-	while (layer != NULL)
+	size_t written;
+	written = fwrite(&MAGIC, sizeof(unsigned char), 1, fd);
+	if (written != 1)
 	{
-		fprintf(fd, "%d\n", layer->size);
-		for (int i = 0; i < layer->size; i++)
-			fprintf(fd, "%f\n", layer->neurons[i].bias);
+		fprintf(stderr, "could not write magic value\n");
+	}
+
+	unsigned char size = depth - 2;
+	fwrite(&size, sizeof(unsigned char), 1, fd);
+
+	// Write the shape
+	unsigned char value;
+
+	for (size_t i = 1; i < depth - 1; i++)
+	{
+		value = shape[i];
+		fwrite(&value, sizeof(unsigned char), 1, fd);
+	}
+
+	// Write the biases
+	size_t lsize;
+	Layer *layer = network->layers; // first layer
+
+	for (size_t i = 1; i < depth; i++)
+	{
+		lsize = shape[i];
+		for (size_t j = 0; j < lsize; j++)
+			fwrite(&(layer->neurons[j].bias), sizeof(float), 1, fd);
 		layer = layer->next;
 	}
 
-	fclose(fd);
+	// Write the Weights
+	layer = network->layers; // go back to first layer
 
-	// weights
+	size_t incidents;
+	incidents = SIZE; // First layer is 784 (image size)
 
-	if ((fd = fopen(wfile, "w")) == NULL)
+	for (size_t i = 1; i < depth; i++)
 	{
-		fprintf(stderr, "couldn't open weight file\n");
-		exit(-1);
-	}
-
-	layer = network->layers;
-	while (layer != NULL)
-	{
-		fprintf(fd, "%d\n", layer->size);
-		fprintf(fd, "%d\n", layer->incidents);
-		for (int i = 0; i < layer->size; i++)
-			for (int j = 0; j < layer->incidents; j++)
-				fprintf(fd, "%f\n", layer->neurons[i].weights[j]);
+		lsize = shape[i];
+		for (size_t j = 0; j < lsize; j++)
+			fwrite(layer->neurons[j].weights, sizeof(float), incidents, fd);
 		layer = layer->next;
+		incidents = lsize;
 	}
 
 	fclose(fd);
