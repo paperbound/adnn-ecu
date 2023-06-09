@@ -13,8 +13,7 @@ struct Net : torch::nn::Module {
     // Use one of many tensor manipulation functions.
     x = torch::sigmoid(fc1->forward(x.reshape({x.size(0), 784})));
     x = torch::sigmoid(fc2->forward(x));
-    //return x.argmax(1).to(torch::kFloat32); Using softmax instead of argmax
-    return x.softmax(1, torch::kFloat32);
+    return x;
   }
 
   // Use one of many "standard library" modules.

@@ -13,9 +13,12 @@
 #include <cstdlib>
 #include <fstream>
 #include <initializer_list>
+#include <random>
 #include <vector>
 
 #include "Eigen/Core"
+
+// #include "pcg_random.hpp" TODO: ADD PCG based PRNG
 
 #include "mnist.h"
 
@@ -117,8 +120,8 @@ private:
 
 		layer(unsigned int c_dim, unsigned int p_dim)
 		{
-			weights = MatrixXf::Random(c_dim, p_dim);
-			bias = VectorXf::Random(c_dim);
+			weights = MatrixXf::Zero(c_dim, p_dim);
+			bias = VectorXf::Zero(c_dim);
 		}
 
 		/* Update the weights and bias using the nabla
@@ -128,8 +131,8 @@ private:
 		void update(nabla& n)
 		{
 			float factor = ETA / BATCH_SIZE;
-			weights = weights - (factor * n.weights);
-			bias = bias - (factor * n.bias);
+			weights -= (factor * n.weights);
+			bias -= (factor * n.bias);
 		}
 	};
 
@@ -149,6 +152,21 @@ private:
 	void generate_random_weights()
 	{
 		// TODO: Add a version that uses pcg_random
+		// pcg_extras::seed_seq_from<std::random_device> seed_source;
+		// pcg32 rng(seed_source);
+		std::random_device rd;
+		std::default_random_engine e(rd());
+		std::normal_distribution<> normal_dist(0, 1);
+
+		for (std::size_t i = 0; i < network.size(); i++)
+		{
+			for (auto j = 0; j < network[i].bias.rows(); j++)
+				network[i].bias[j] = normal_dist(e);
+			for (auto j = 0; j < network[i].weights.rows(); j++)
+				for (auto k = 0; k < network[i]
+					     .weights.cols(); k++)
+					network[i].weights(j,k)=normal_dist(e);
+		}
 	}
 
 	/* Mini Batched Stochastic Gradient Descend Algorithm
@@ -170,10 +188,6 @@ private:
 		for (std::size_t i = 0; i < mnist_loader::train.size()
 			     ; i += BATCH_SIZE)
 		{
-			// Zero out the nabla matrixes
-			for (std::size_t j = 0; j < nablas.size(); j++)
-				nablas[j].zero_out();
-
 			// Perform Backpropagation on the batch
 			for (std::size_t j = 0; j < BATCH_SIZE; j++)
 				back_propogate(nablas,
@@ -183,6 +197,10 @@ private:
 			// Update the weights and biases of the network
 			for (std::size_t j = 0; j < network.size(); j++)
 				network[j].update(nablas[j]);
+
+			// Zero out the nabla matrixes
+			for (std::size_t j = 0; j < nablas.size(); j++)
+				nablas[j].zero_out();
 		}
 	}
 
@@ -303,15 +321,16 @@ hdrnn::~hdrnn()
 void hdrnn::train_hdrnn(std::string dataset)
 {
 	mnist_loader::read_mnist(dataset);
+	generate_random_weights();
 	// TODO: Generate PCG-based weights and bias initializations
 	for (unsigned int i = 0; i < EPOCHS; i++)
 	{
 		std::random_device r;
 		std::default_random_engine e1(r());
-		// std::shuffle(
-		//      std::begin(mnist_loader::train),
-		//      std::end(mnist_loader::train), e1
-		//     );
+		std::shuffle(
+		     std::begin(mnist_loader::train),
+		     std::end(mnist_loader::train), e1
+		     );
 		mini_batch_sgd();
 		evaluate_hdrnn(i);
 	}

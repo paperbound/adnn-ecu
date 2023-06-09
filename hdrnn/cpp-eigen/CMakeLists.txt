@@ -9,7 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 # C++ Configurations/Requirements
@@ -19,6 +19,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED, True)
 # Submodules
 # TODO : add submodules update logic for hdrnn
 #      	 (take inspiration from argo codebase maybe)
+add_definitions(-DEIGEN_DONT_PARALLELIZE)
 add_subdirectory(submodules/eigen)
 add_subdirectory(submodules/gflags)
 
