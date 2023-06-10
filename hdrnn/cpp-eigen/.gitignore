@@ -3,3 +3,6 @@ build
 
 # binaries
 bin/*
+
+# dataset
+dataset/*

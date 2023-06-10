@@ -10,34 +10,24 @@
 #define HDRNN_HDRNN_H
 
 #include <cmath>
-#include <cstdlib>
-#include <fstream>
-#include <initializer_list>
-#include <random>
 #include <vector>
+#include <random>
+#include <gflags/gflags.h>
 
 #include "Eigen/Core"
 
-// #include "pcg_random.hpp" TODO: ADD PCG based PRNG
+// TODO: ADD PCG based PRNG
+// #include "pcg_random.hpp"
+
+DECLARE_bool(quiet);
 
 #include "mnist.h"
 
 using Eigen::Index;
 using Eigen::Matrix;
 using Eigen::MatrixXf;
-using Eigen::VectorXf;
 
-// TODO: Take this out to a configuration file
-// CONFIG start
-/* Hyperparameters */
-const int EPOCHS = 30;
-const int BATCH_SIZE = 10;
-const float ETA = 3;
-
-/* HDRNN shape */
-#define INPUT_LAYER_SIZE 784
-#define OUTPUT_LAYER_SIZE 10
-// CONFIG end
+const unsigned char MAGIC = 7;
 
 /* Activation Functions */
 float sigmoid(float x)
@@ -56,7 +46,10 @@ class hdrnn
 public:	/* HDRNN API functions */
 
 	/* HDRNN constructor */
-	hdrnn (std::initializer_list<unsigned int>);
+	hdrnn () : network({}), epochs(0), batch_size(0), learning_rate(0) {} ;
+
+	/* HDRNN constructor */
+	hdrnn (std::vector<unsigned int>, unsigned int, unsigned int, float);
 
 	/* HDRNN destructor */
 	~hdrnn ();
@@ -67,11 +60,11 @@ public:	/* HDRNN API functions */
 	/* Evaluate the accuracy of the hdrnn */
 	void evaluate_hdrnn(unsigned int);
 
-	/* Dump csv file of weights and biases */
-	void dump_hdrnn(std::string, std::string) const; // takes 2 path names
+	/* Dump net description file */
+	void dump_hdrnn(std::string) const;
 
-	/* Loads a csv file of weights and biases into the Network */
-	void load_hdrnn(std::string, std::string);
+	/* Load net description file */
+	void load_hdrnn(std::string);
 
 	/* Infer the image at path of a handwritten digit using the network */
 	void infer_pgm_image_from_path(std::string);
@@ -128,13 +121,32 @@ private:
 		 *
 		 * @param n - Nablas with which to update
 		 */
-		void update(nabla& n)
+		void update(nabla& n, float factor)
 		{
-			float factor = ETA / BATCH_SIZE;
 			weights -= (factor * n.weights);
 			bias -= (factor * n.bias);
 		}
 	};
+
+	/* HDRNN shape
+	 *
+	 * shape - specifies the number and dimension of the hidden layers to initialize
+	 */
+	void create_network(std::vector<unsigned int> shape)
+	{
+		// size of image in row vector form
+		unsigned int previous_dim = mnist_loader::IMAGE_SIZE;
+
+		// iterate over the dimensions required in the hidden layer
+		for (auto dim : shape)
+		{
+			network.push_back(layer(dim, previous_dim));
+			previous_dim = dim;
+		}
+
+		// finally, add the last layer
+		network.push_back(layer(mnist_loader::DIGITS, previous_dim));
+	}
 
 	/* Infer current image of a handwritten digit using the network
 	 *
@@ -154,6 +166,7 @@ private:
 		// TODO: Add a version that uses pcg_random
 		// pcg_extras::seed_seq_from<std::random_device> seed_source;
 		// pcg32 rng(seed_source);
+
 		std::random_device rd;
 		std::default_random_engine e(rd());
 		std::normal_distribution<> normal_dist(0, 1);
@@ -186,17 +199,17 @@ private:
 
 		// Go through the training data by batches
 		for (std::size_t i = 0; i < mnist_loader::train.size()
-			     ; i += BATCH_SIZE)
+			     ; i += batch_size)
 		{
 			// Perform Backpropagation on the batch
-			for (std::size_t j = 0; j < BATCH_SIZE; j++)
+			for (std::size_t j = 0; j < batch_size; j++)
 				back_propogate(nablas,
 					       mnist_loader::train[i+j].data,
 					       mnist_loader::train[i+j].label);
 
 			// Update the weights and biases of the network
 			for (std::size_t j = 0; j < network.size(); j++)
-				network[j].update(nablas[j]);
+				network[j].update(nablas[j], learning_rate / batch_size);
 
 			// Zero out the nabla matrixes
 			for (std::size_t j = 0; j < nablas.size(); j++)
@@ -242,7 +255,7 @@ private:
 		std::vector<VectorXf> activations;
 		VectorXf activation = image;
 		activations.push_back(activation);
- 
+
 		// Feed forward
 		std::vector<VectorXf> zs;
 		VectorXf z;
@@ -256,7 +269,7 @@ private:
 		}
 
 		// Backward pass
-		VectorXf y = VectorXf::Zero(OUTPUT_LAYER_SIZE);
+		VectorXf y = VectorXf::Zero(mnist_loader::DIGITS);
 		y[label] = 1;
 		VectorXf delta = (activation - y)
 			.cwiseProduct(z.unaryExpr(&sigmoid_prime));
@@ -285,25 +298,27 @@ private:
 	}
 
 	std::vector<layer> network;
+	unsigned int epochs;
+	unsigned int batch_size;
+	float learning_rate;
 };
 
 /* HDRNN constructor
  *
  * shape - specifies the number and dimension of the hidden layers to initialize
+ * e     - number of epochs to train the network
+ * bs    - batch size for mSGD
+ * lr    - learning rate for SGD
  */
-hdrnn::hdrnn(std::initializer_list<unsigned int> shape)
+hdrnn::hdrnn(std::vector<unsigned int> shape, unsigned int e,
+	unsigned int bs, float lr)
 {
-	// size of image in row vector form
-	unsigned int previous_dim = INPUT_LAYER_SIZE;
+	create_network(shape);
 
-	// iterate over the dimensions required in the hidden layer
-	for (auto dim : shape)
-	{
-		network.push_back(layer(dim, previous_dim));
-		previous_dim = dim;
-	}
-	// finally, add the last layer
-	network.push_back(layer(OUTPUT_LAYER_SIZE, previous_dim));
+	// parameters for the learning algorithm
+	epochs = e;
+	batch_size = bs;
+	learning_rate = lr;
 }
 
 /* HDRNN destructor */
@@ -320,10 +335,16 @@ hdrnn::~hdrnn()
  */
 void hdrnn::train_hdrnn(std::string dataset)
 {
-	mnist_loader::read_mnist(dataset);
+	if (!mnist_loader::read_mnist(dataset))
+	{
+		std::cerr << "could not load the dataset" << std::endl;
+		std::exit(EXIT_FAILURE);
+	}
+
 	generate_random_weights();
+
 	// TODO: Generate PCG-based weights and bias initializations
-	for (unsigned int i = 0; i < EPOCHS; i++)
+	for (unsigned int i = 0; i < epochs; i++)
 	{
 		std::random_device r;
 		std::default_random_engine e1(r());
@@ -332,7 +353,8 @@ void hdrnn::train_hdrnn(std::string dataset)
 		     std::end(mnist_loader::train), e1
 		     );
 		mini_batch_sgd();
-		evaluate_hdrnn(i);
+		if (!FLAGS_quiet)
+			evaluate_hdrnn(i);
 	}
 }
 
@@ -345,121 +367,141 @@ void hdrnn::evaluate_hdrnn(unsigned int epoch)
 	unsigned int count = 0;
 	for (std::size_t i = 0; i < mnist_loader::test.size(); i++)
 		if (
-		    static_cast<unsigned int>(
-					      predict(mnist_loader::test[i].data))
-		    == mnist_loader::test[i].label
-		    )
+			static_cast<unsigned int>(
+					predict(mnist_loader::test[i].data))
+			== mnist_loader::test[i].label
+			)
 			count += 1;
 	std::cout << "Epoch : " << epoch
-		  << " Network has classified "
-		  << count << "/"
-		  << mnist_loader::test.size()
-		  << " correctly" << std::endl;
+		<< " Network has classified "
+		<< count << "/"
+		<< mnist_loader::test.size()
+		<< " correctly" << std::endl;
 }
 
-/* Loads files with weights and biases to update the same on the network
+/* Dumps neural network description file (see hdrnn/README.md)
  *
- * Note : Creates files with the weights and biases of the network
+ * Note : Creates .nn file with the weights and biases of the network
  */
-void hdrnn::dump_hdrnn(std::string w_file, std::string b_file) const
+void hdrnn::dump_hdrnn(std::string n_file) const
 {
-	// File output streams for weights and biases file
-	std::ofstream w_stream, b_stream;
+	// File output stream for .nn file
+	std::ofstream n_stream;
 
-	// Open the weight file
-	w_stream.open(w_file);
-	if (!w_stream)
+	// Open the .nn file
+	n_stream.open(n_file, std::ios::out | std::ios::binary);
+	if (!n_stream)
 	{
-		std::cerr << "Could not open weights file" << std::endl;
+		std::cerr << "Could not open" << n_file << std::endl;
 		std::exit(EXIT_FAILURE);
 	}
 
-	// Open the bias file
-	b_stream.open(b_file);
-	if (!b_stream)
+	unsigned char hidden_layers = MAGIC;
+
+	// write the MAGIC byte
+	n_stream.write(reinterpret_cast<char*>(&hidden_layers), 1);
+
+	// write the number of hidden layers
+	// TODO: assert this type bound somewhere
+	hidden_layers = network.size() - 1;
+	n_stream.write(reinterpret_cast<char*>(&hidden_layers), 1);
+
+	// write the hidden layer sizes
+	for (auto l : network)
 	{
-		std::cerr << "Could not open bias file" << std::endl;
-		std::exit(EXIT_FAILURE);
+		unsigned char size = l.bias.size();
+		n_stream.write(reinterpret_cast<char *>(&size), 1);
 	}
 
-	// Write the file contents
-	for (std::size_t k = 0; k < network.size(); k++)
+	// write the biases
+	for (auto l : network)
 	{
-		std::size_t w_dim1 = network[k].weights.rows();
-		std::size_t w_dim2 = network[k].weights.cols();
-		std::size_t b_dim  = network[k].bias.cols();
-
-		w_stream << w_dim1 << std::endl
-			 << w_dim2 << std::endl;
-		b_stream << b_dim << std::endl;
-
-		// TODO: Add asserts here for w_dim1 == b_dim
-		for (unsigned int i = 0; i < w_dim1; i++)
-		{
-			b_stream << network[k].bias(i) << std::endl;
-			for (unsigned int j = 0; j < w_dim2; j++)
-				w_stream << network[k].weights(i, j)
-					 << std::endl;
-		}
+		n_stream.write(
+			reinterpret_cast<char *>(l.bias.data()),
+			l.bias.size() * sizeof(float)
+			);
 	}
 
-	// close file streams
-	w_stream.close();
-	b_stream.close();
+	// write the weights
+	for (auto l : network)
+	{
+		n_stream.write(
+			reinterpret_cast<char *>(l.weights.data()),
+			l.weights.size() * sizeof(float)
+			);
+	}
+
+	// close file stream
+	n_stream.close();
 }
 
-// TODO: Create a better standard format for weights, biases files
-
-/* Loads csv files with weights and biases to update the same on the network
+/* Loads neural network description file (see hdrnn/README.md)
  *
  * Note : Updates the weights and biases on the network
  */
-void hdrnn::load_hdrnn(std::string w_file, std::string b_file)
+void hdrnn::load_hdrnn(std::string n_file)
 {
-	// File input streams for weights and biases file
-	std::ifstream w_stream, b_stream;
+	// File input stream for .nn file
+	std::ifstream n_stream;
 
-	// Open the weight file
-	w_stream.open(w_file);
-	if (!w_stream)
+	// Open the .nn file
+	n_stream.open(n_file, std::ios::in | std::ios::binary);
+	if (!n_stream)
 	{
-		std::cerr << "Could not open weights file" << std::endl;
+		std::cerr << "Could not open" << n_file << std::endl;
 		std::exit(EXIT_FAILURE);
 	}
 
-	// Open the bias file
-	b_stream.open(b_file);
-	if (!b_stream)
+	unsigned char hidden_layers;
+
+	// read the MAGIC byte
+	n_stream.read(reinterpret_cast<char *>(&hidden_layers), 1);
+
+	if (hidden_layers != MAGIC)
 	{
-		std::cerr << "Could not open bias file" << std::endl;
+		std::cerr << "could not verify magic value: "
+			<< hidden_layers
+			<< std::endl;
 		std::exit(EXIT_FAILURE);
 	}
 
-	unsigned int w_dim1, w_dim2, b_dim;
-	float x;
+	// read the size
+	n_stream.read(reinterpret_cast<char *>(&hidden_layers), 1);
 
-	// Read the file contents
-	for (std::size_t k = 0; k < network.size(); k++)
+	// read the shape
+	std::vector<unsigned int> shape;
+	unsigned int size;
+
+	for (unsigned char i = 0; i < hidden_layers; i++)
 	{
-		w_stream >> w_dim1 >> w_dim2;
-		b_stream >> b_dim;
-
-		// TODO: Add asserts here for w_dim1 == b_dim
-		for (unsigned int i = 0; i < w_dim1; i++)
-		{
-			b_stream >> x;
-			network[k].bias(i) = x;
-			for (unsigned int j = 0; j < w_dim2; j++)
-			{
-				w_stream >> x;
-				network[k].weights(i, j) = x;
-			}
-		}
+		size = 0;
+		n_stream.read(reinterpret_cast<char *>(&size), 1);
+		shape.push_back(size);
 	}
 
-	// close file streams
-	w_stream.close();
-	b_stream.close();
+	// create the network
+	create_network(shape);
+
+	// read the biases
+	for (auto l : network)
+	{
+		n_stream.read(
+			reinterpret_cast<char *>(l.bias.data()),
+			l.bias.size() * sizeof(float)
+			);
+	}
+
+	// read the weights
+	for (auto l : network)
+	{
+		n_stream.read(
+			reinterpret_cast<char *>(l.weights.data()),
+			l.weights.size() * sizeof(float)
+			);
+	}
+
+	// close file stream
+	n_stream.close();
 }
 
 // TODO: Change to a more tradition PGM read approach
@@ -467,7 +509,7 @@ void hdrnn::load_hdrnn(std::string w_file, std::string b_file)
  *
  * Note : Changes the current image
  *        Outputs the digit that the HDRNN thinks the image represents
-v * i_file - filename of a PGM image (in a particular format)
+ * i_file - filename of a PGM image (in a particular format)
  */
 void hdrnn::infer_pgm_image_from_path(std::string i_file)
 {
@@ -482,14 +524,14 @@ void hdrnn::infer_pgm_image_from_path(std::string i_file)
 		std::exit(EXIT_FAILURE);
 	}
 
-	VectorXf image = VectorXf(INPUT_LAYER_SIZE);
+	VectorXf image = VectorXf(mnist_loader::IMAGE_SIZE);
 	float x;
 
 	// seek to ignore PGM boilerplate
 	i_stream.seekg(13);
 
 	// read the image file into hdrnn image
-	for (unsigned int i = 0; i < INPUT_LAYER_SIZE; i++)
+	for (unsigned int i = 0; i < mnist_loader::IMAGE_SIZE; i++)
 	{
 		i_stream >> x;
 		image[i] = x / 255;

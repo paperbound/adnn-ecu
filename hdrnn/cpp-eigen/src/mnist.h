@@ -10,11 +10,8 @@
 #ifndef HDRNN_MNIST_H
 #define HDRNN_MNIST_H
 
-#include <algorithm>
-#include <bit>
-#include <fstream>
 #include <iostream>
-#include <random>
+#include <fstream>
 
 #include "Eigen/Core"
 
@@ -31,6 +28,8 @@ namespace mnist_loader {
 
 	/* Image Parameters */
 	const unsigned int IMAGE_SIZE = 784; // 28 x 28
+	const unsigned int DIMENSION = 28;
+	const unsigned int DIGITS = 10;
 
 	const unsigned int TRAINING_SIZE = 50000;
 	const unsigned int VALIDATE_SIZE = 10000;

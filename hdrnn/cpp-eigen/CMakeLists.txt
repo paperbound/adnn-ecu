@@ -16,10 +16,11 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_CXX_STANDARD, 11)
 set(CMAKE_CXX_STANDARD_REQUIRED, True)
 
+add_definitions(-DEIGEN_DONT_PARALLELIZE)
+
 # Submodules
 # TODO : add submodules update logic for hdrnn
-#      	 (take inspiration from argo codebase maybe)
-add_definitions(-DEIGEN_DONT_PARALLELIZE)
+#       (take inspiration from argo codebase maybe)
 add_subdirectory(submodules/eigen)
 add_subdirectory(submodules/gflags)
 
