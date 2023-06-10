@@ -1,4 +1,5 @@
-*.zip
-logs_*
 # Libtorch folder used for builds
 libtorch
+
+# pytorch .pt files
+*.pt
