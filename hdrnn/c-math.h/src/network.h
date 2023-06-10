@@ -25,7 +25,7 @@ extern char *ifile;
 
 /* Default network */
 unsigned int depth = 3;
-unsigned int default_shape[] = {784, 30, 10};
+unsigned int default_shape[] = {784, 32, 10};
 unsigned int *shape = default_shape;
 
 /* (Default) Hyperparameters */

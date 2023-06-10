@@ -34,7 +34,7 @@ extern unsigned int epochs;
 extern unsigned int batchSize;
 extern float eta;
 
-enum command {INFER, TRAIN, NONE} run_command = NONE;
+enum command {INFER, TRAIN, NONE};
 
 /* commands */
 const char *commands[] = {
@@ -80,7 +80,7 @@ const int nargs = 7;
 const char *help = "\n"
 	"\t<command> [<args>]\n\nCommands:\n"
 	"\t\033[1minfer\033[22m [-i, --image IMAGE_PATH] [-n, --net c-math.nn]\n"
-	"\t\033[1mtrain\033[22m [-s, --shape 16,16] [-e, --epochs 4]\n"
+	"\t\033[1mtrain\033[22m [-s, --shape 32] [-e, --epochs 30]\n"
 	"\t\033\t\033 [-q, --quiet] [-bs, --batch_size=10]\n"
 	"\t\033\t\033 [-lr, --learning_rate 3] [-n, --net c-math.nn]\n";
 
@@ -96,7 +96,7 @@ static bool   are_strings_matching(char *, const char *, unsigned int);
 
 /* Show a Help message for the program, then Exit */
 void showHelpMessageThenExit() {
-	printf("Usage: \033[1m%s\033[22m [--quiet]\n", progname);
+	printf("Usage: \033[1m%s\033[22m\n", progname);
 	puts(help);
 	exit(-1);
 }
