@@ -8,7 +8,7 @@ DEFINE_uint32(batch_size, 10, "The batch size while performing mSGD");
 DEFINE_double(learning_rate, 3.0, "The learning rate for SGD");
 DEFINE_string(net, "net.pt", "File path for .pt file");
 DEFINE_string(image, "1.pgm", "PGM image file path");
-DEFINE_string(mnist, "./data", "MNIST dataset");
+DEFINE_string(mnist, "./dataset", "MNIST dataset");
 
 const unsigned int IMAGE_SIZE = 784;
 const unsigned int DIGITS = 10;

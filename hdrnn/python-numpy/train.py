@@ -18,6 +18,8 @@ parser.add_argument('-bs', '--batch_size', dest='bs',
                     action='store', default=10, type=int)
 parser.add_argument('-n', '--net', dest='nfile',
                     action='store', default='numpy.nn')
+parser.add_argument('-q', '--quiet', dest='quiet',
+                    action='store_true', default=False)
 a = parser.parse_args()
 
 epochs = a.epochs
@@ -25,6 +27,7 @@ shape  = a.shape
 lrate  = a.lrate
 bs     = a.bs
 nfile  = a.nfile
+quiet  = a.quiet
 
 # Load the data set
 import mnist_loader
@@ -46,7 +49,8 @@ sizes.append(10) # output dimension
 
 net = network.Network(sizes)
 
-net.SGD(training_data, epochs, bs, lrate, test_data=test_data)
+net.SGD(training_data, epochs, bs, lrate, test_data=test_data, quiet=quiet)
 
 # Dump weights
-net.dump_weights(nfile)
+if (not quiet):
+    net.dump_weights(nfile)

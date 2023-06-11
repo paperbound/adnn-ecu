@@ -164,13 +164,13 @@ void parseArguments(int argc, char *argv[])
 
 				if (are_strings_matching(argv[i-1] + 1,
 						arguments[ais(BATCH_SIZE)],
-						asize))
+						asize-1))
 				{
 					batchSize = parseInteger(argv[i],
 									get_string_length(argv[i]));
 				} else if (are_strings_matching(argv[i-1] + 1,
 								arguments[ais(LEARNING_RATE)],
-								asize))
+								asize-1))
 				{
 					eta = parseFloat(argv[i]);
 				} else
@@ -185,7 +185,7 @@ void parseArguments(int argc, char *argv[])
 
 				if (are_strings_matching(argv[i-1] + 2,
 						arguments[aib(NET)],
-						asize))
+						asize-2))
 				{
 					nfile = new_string_copy(argv[i]);
 				} else {
@@ -195,21 +195,21 @@ void parseArguments(int argc, char *argv[])
 			}
 			case 7: // "--quiet" "--shape" "--image"
 			{
-				if (are_strings_matching(argv[i-1] + 2,
+				if (are_strings_matching(argv[i] + 2,
 						arguments[aib(QUIET)],
-						asize))
+						asize-2))
 				{
 					quiet = true;
-				} else if (are_strings_matching(argv[i-1] + 2,
+				} else if (are_strings_matching(argv[i] + 2,
 								arguments[aib(SHAPE)],
-								asize))
+								asize-2))
 				{
 					ENSURE_NEXT_ARG(++i, argc)
 
 					parseShape(argv[i]);
-				} else if (are_strings_matching(argv[i-1] + 2,
+				} else if (are_strings_matching(argv[i] + 2,
 								arguments[aib(IMAGE)],
-								asize))
+								asize-2))
 				{
 					ENSURE_NEXT_ARG(++i, argc)
 
@@ -225,7 +225,7 @@ void parseArguments(int argc, char *argv[])
 
 				if (are_strings_matching(argv[i-1] + 2,
 						arguments[aib(EPOCHS)],
-						asize))
+						asize-2))
 				{
 					epochs = parseInteger(argv[i],
 									get_string_length(argv[i]));
@@ -240,7 +240,7 @@ void parseArguments(int argc, char *argv[])
 
 				if (are_strings_matching(argv[i-1] + 2,
 						arguments[aib(BATCH_SIZE)],
-						asize))
+						asize-2))
 				{
 					batchSize = parseInteger(argv[i] ,
 									get_string_length(argv[i]));
@@ -255,7 +255,7 @@ void parseArguments(int argc, char *argv[])
 
 				if (are_strings_matching(argv[i-1] + 2,
 						arguments[aib(LEARNING_RATE)],
-						asize))
+						asize-2))
 				{
 					eta = parseFloat(argv[i]);
 				} else {
