@@ -27,7 +27,11 @@ bash run.sh
 Source libraries to appropriate folders
 
 ```
-cp libgomp.so.1 /lib # Open MP library
-cp libgfortran.so.5 /lib
+cp libgomp.so.1 /lib # GNU Open MP library
+cp libgfortran.so.5 /lib # GNU Fortran compiler internals
 cp libopenblas.so.1 /lib # Open Blas
 ```
+
+## Measurement
+
+Setup a screen and run `bash run.sh`
