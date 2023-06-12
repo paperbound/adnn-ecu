@@ -16,7 +16,7 @@ const unsigned int DIGITS = 10;
 const char *help = "\n"
 	"\t<command> [<args>]\n\nCommands:\n"
 	"\t\033[1minfer\033[22m [--image IMAGE_PATH] [--net net.pt]\n"
-	"\t\033[1mtrain\033[22m [--shape 30] [--epochs 30]\n"
+	"\t\033[1mtrain\033[22m [--shape 32] [--epochs 30]\n"
 	"\t\033\t\033 [--quiet] [--batch_size=10]\n"
 	"\t\033\t\033 [--learning_rate 3] [--net net.pt]\n";
 
@@ -111,6 +111,38 @@ struct Net : torch::nn::Module
 	std::vector<torch::nn::Linear> fc_list{};
 };
 
+/* Tests then prints HDRNN network accuracy
+ *
+ * net       - hdrnn neural network model to test
+ */
+void test_network(std::shared_ptr<Net> const&net)
+{
+	double test_loss = 0;
+	long correct = 0;
+
+	static auto test_data_loader = torch::data::make_data_loader(
+				torch::data::datasets::MNIST(FLAGS_mnist,
+					torch::data::datasets::MNIST::Mode::kTest)
+						.map(torch::data::transforms::Stack<>()));
+
+	for (const auto &batch : *test_data_loader)
+	{
+		torch::Tensor prediction = net->forward(batch.data);
+		torch::Tensor target = torch::one_hot(batch.target, 10)
+								.to(torch::kFloat32);
+		torch::Tensor loss = torch::mse_loss(
+			prediction,
+			target);
+		test_loss += loss.item<float>();
+		correct += (
+			target.argmax(1).item<int>() -
+			prediction.argmax(1).item<int>() == 0);
+	}
+
+	std::cout << "Loss: " << test_loss
+			<< "| Correct: " << correct << std::endl;
+}
+
 int main(int argc, char *argv[])
 {
 	gflags::SetUsageMessage(help);
@@ -131,7 +163,9 @@ int main(int argc, char *argv[])
 			// Create a new Net.
 			auto net = std::make_shared<Net>(shape);
 			torch::load(net, FLAGS_net);
+			test_network(net);
 
+			// TODO : add image inference here
 			break;
 		}
 		case TRAIN:
@@ -139,25 +173,20 @@ int main(int argc, char *argv[])
 			// Create a new Net.
 			auto net = std::make_shared<Net>(shape);
 
-			// Create a multi-threaded data loader for the MNIST dataset.
 			auto data_loader = torch::data::make_data_loader(
 				torch::data::datasets::MNIST(FLAGS_mnist)
 				.map(torch::data::transforms::Stack<>()),
 					/*batch_size=*/FLAGS_batch_size);
 
-			auto test_data_loader = torch::data::make_data_loader(
-				torch::data::datasets::MNIST(FLAGS_mnist,
-					torch::data::datasets::MNIST::Mode::kTest)
-						.map(torch::data::transforms::Stack<>()));
-
 			// Instantiate an SGD optimization algorithm to
 			// update our Net's parameters.
 			torch::optim::SGD optimizer(net->parameters(),
-										/*lr=*/FLAGS_learning_rate);
+										FLAGS_learning_rate);
 
 			for (size_t epoch = 1; epoch <= FLAGS_epochs; ++epoch)
 			{
 				size_t batch_index = 0;
+
 				// Iterate the data loader to yield batches from the dataset.
 				for (auto &batch : *data_loader)
 				{
@@ -180,26 +209,11 @@ int main(int argc, char *argv[])
 					optimizer.step();
 				}
 
-				// Test, output loss, and checkpoint every epoch
-				double test_loss = 0;
-				long correct = 0;
-				for (const auto &batch : *test_data_loader)
-				{
-					torch::Tensor prediction = net->forward(batch.data);
-					torch::Tensor target = torch::one_hot(batch.target, 10)
-											.to(torch::kFloat32);
-					torch::Tensor loss = torch::mse_loss(
-						prediction,
-						target);
-					test_loss += loss.item<float>();
-					correct += (
-						target.argmax(1).item<int>() -
-						prediction.argmax(1).item<int>() == 0);
-				}
-
 				if (!FLAGS_quiet)
-					std::cout << "Epoch: " << epoch << " | Loss: " << test_loss
-							<< "| Correct: " << correct << std::endl;
+				{
+					std::cout << "Epoch: " << epoch << " | ";
+					test_network(net);
+				}
 			}
 
 			if (!FLAGS_quiet)

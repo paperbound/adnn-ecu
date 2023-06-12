@@ -6,3 +6,6 @@ bin/*
 
 # dataset
 dataset/*
+
+# images
+*.pgm

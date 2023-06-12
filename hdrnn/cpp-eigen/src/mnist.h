@@ -124,6 +124,19 @@ namespace mnist_loader {
 		return true;
 	}
 
+	/* Load mnist
+	 *
+	 * wrapper around read_mnist
+	 */
+	void load_mnist(std::string dd_path)
+	{
+		if (!read_mnist(dd_path))
+		{
+			std::cerr << "could not load the dataset" << std::endl;
+			std::exit(EXIT_FAILURE);
+		}
+	}
+
 } // mnist_loader
 
 #endif

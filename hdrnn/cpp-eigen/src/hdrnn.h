@@ -58,7 +58,7 @@ public:	/* HDRNN API functions */
 	void train_hdrnn(std::string);
 
 	/* Evaluate the accuracy of the hdrnn */
-	void evaluate_hdrnn(unsigned int);
+	void evaluate_hdrnn();
 
 	/* Dump net description file */
 	void dump_hdrnn(std::string) const;
@@ -335,11 +335,7 @@ hdrnn::~hdrnn()
  */
 void hdrnn::train_hdrnn(std::string dataset)
 {
-	if (!mnist_loader::read_mnist(dataset))
-	{
-		std::cerr << "could not load the dataset" << std::endl;
-		std::exit(EXIT_FAILURE);
-	}
+	mnist_loader::load_mnist(dataset);
 
 	generate_random_weights();
 
@@ -354,7 +350,10 @@ void hdrnn::train_hdrnn(std::string dataset)
 		     );
 		mini_batch_sgd();
 		if (!FLAGS_quiet)
-			evaluate_hdrnn(i);
+		{
+			std::cout << "Epoch : " << i << " ";
+			evaluate_hdrnn();
+		}
 	}
 }
 
@@ -362,7 +361,7 @@ void hdrnn::train_hdrnn(std::string dataset)
  *
  * Note : Prints out the current accuracy of the network
  */
-void hdrnn::evaluate_hdrnn(unsigned int epoch)
+void hdrnn::evaluate_hdrnn()
 {
 	unsigned int count = 0;
 	for (std::size_t i = 0; i < mnist_loader::test.size(); i++)
@@ -372,8 +371,7 @@ void hdrnn::evaluate_hdrnn(unsigned int epoch)
 			== mnist_loader::test[i].label
 			)
 			count += 1;
-	std::cout << "Epoch : " << epoch
-		<< " Network has classified "
+	std::cout << "Network has classified "
 		<< count << "/"
 		<< mnist_loader::test.size()
 		<< " correctly" << std::endl;

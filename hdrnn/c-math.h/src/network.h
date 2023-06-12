@@ -74,7 +74,8 @@ typedef struct
 static float sigmoid(float);
 static float sigmoid_prime(float);
 
-static int prediction(Network *);
+static int  prediction(Network *);
+static void generate_random_weights(Network *);
 
 static void add_layer(Network *, int, int);
 
@@ -140,7 +141,7 @@ static void add_layer(Network *network, int size, int incidents)
 	}
 }
 
-void generate_random_weights(Network *network)
+static void generate_random_weights(Network *network)
 {
 	// Setup Random Number Generator
 	bitgen_t bitgen;
@@ -315,6 +316,8 @@ void test_network(Network *network)
 
 void trainHDRNN(Network *network, bool quiet)
 {
+	load_mnist();
+	generate_random_weights(network);
 	for (int i = 0; i < epochs; i++)
 	{
 		mini_batch_sgd(network);

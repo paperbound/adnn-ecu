@@ -90,6 +90,8 @@ int main(int argc, char *argv[])
 		{
 			hdrnn network{};
 			network.load_hdrnn(FLAGS_net);
+			mnist_loader::load_mnist(FLAGS_mnist);
+			network.evaluate_hdrnn();
 			network.infer_pgm_image_from_path(FLAGS_image);
 			break;
 		}

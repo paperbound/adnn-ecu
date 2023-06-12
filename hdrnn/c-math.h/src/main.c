@@ -32,12 +32,11 @@ int main(int argc, char *argv[])
 	{
 		case INFER:
 			loadHDRNN(hdrnn);
+			test_network(hdrnn);
 			inferImage(hdrnn);
 			break;
 		case TRAIN:
-			load_mnist();
 			initHDRNN(hdrnn);
-			generate_random_weights(hdrnn);
 			trainHDRNN(hdrnn, quiet);
 			if (!quiet)
 				dumpWeights(hdrnn);

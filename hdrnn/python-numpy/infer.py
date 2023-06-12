@@ -30,6 +30,13 @@ with open(ifile, 'r') as f:
 
 a = np.reshape(a, (784, 1))
 
+# Load the data set
+import mnist_loader
+
+training_data, validation_data, test_data = mnist_loader.load_data_wrapper()
+training_data = list(training_data)
+test_data = list(test_data)
+
 # Configure the network
 import network
 import struct
@@ -61,6 +68,9 @@ with open(nfile, 'rb') as f:
 net = network.Network(shape)
 
 if net.load_weights(biases, weights):
-    print(np.argmax(net.feedforward(a)))
+    print("Network gets : {1} / {2} correct".format(
+                        self.evaluate(test_data), n_test))
+    print("Network things image is an : ",
+          np.argmax(net.feedforward(a)))
 else:
     raise("Could not load the weights")
