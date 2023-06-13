@@ -16,3 +16,6 @@
 [submodule "hdrnn/cpp-eigen/submodules/pcg-cpp"]
 	path = hdrnn/cpp-eigen/submodules/pcg-cpp
 	url = https://github.com/imneme/pcg-cpp.git
+[submodule "scripts/FlameGraph"]
+	path = scripts/FlameGraph
+	url = https://github.com/brendangregg/FlameGraph

@@ -1,2 +1,5 @@
 # results.json
 *.json
+
+# results png
+*.png

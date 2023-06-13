@@ -24,15 +24,16 @@ results = json.load(open(a.rfile))
 index = 0 # Size vs Time
 
 fig, ax = plt.subplots()
-plt.xlabel("HDRNN hidden layer shape")
-plt.ylabel("Time to complete 1 Epoch of Training")
+plt.xlabel("HDR-NN hidden layer shape")
+plt.ylabel("Time to complete 1 Epoch of Training (seconds)")
 
 for program in results:
     measures = [ (r[SIZE], r[USERTIME] + r[SYSTIME], r[SHAPE])
                   for r in results[program] ]
     measures = sorted(measures, key=lambda measure: measure[0])
     ax.plot([ m[0] for m in measures ],
-            [ m[1] for m in measures ], label=program)
+            [ m[1] for m in measures ],
+            label=program, marker='v')
     ax.set_xticks([ m[0] for m in measures ],
                   [ m[2] for m in measures ])
 

@@ -7,7 +7,5 @@ build
 # poky sdk folder
 sdk
 
-#logs
-log_*
-bias*
-weights*
+# measurement logs
+log.*

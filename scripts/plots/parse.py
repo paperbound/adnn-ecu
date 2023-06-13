@@ -59,7 +59,7 @@ def parseCommand(command):
             found = True
             break
     if not found:
-        raise("Unknown program found : " + command)
+        raise Exception("Unknown program found : " + command)
     return prog, o[0].epochs, o[0].shape
 
 for entry in [ log[i : i + LOG_ENTRY_SIZE]

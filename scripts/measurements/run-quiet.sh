@@ -2,7 +2,7 @@
 
 # tools
 LOG=$(date '+log.%C%y.%m.%d.%H')
-TIME="/usr/bin/time -v --"
+TIME="gtime -v --"
 
 # hdrnn
 declare -a PROGRAMS=(
@@ -11,7 +11,7 @@ declare -a PROGRAMS=(
 	"./hdrnn/cpp-eigen/bin/hdr train --epochs 1 --quiet --shape "
 	"python3 ./hdrnn/python-numpy/train.py --epochs 1 --quiet --shape "
 )
-declare -a SIZES=("2" "4" "8" "16,16" "32" "32,32,32" "64" "96" "128")
+declare -a SIZES=("2" "4" "8" "16,16" "32" "48,48" "64,16" "72" "82,36,16" "96,96" "104" "114" "128")
 
 {
 	for program in "${PROGRAMS[@]}"
