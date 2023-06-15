@@ -9,3 +9,10 @@ sdk
 
 # measurement logs
 log.*
+alog.*
+plog.*
+hlog.*
+
+# MNIST dataset
+dataset
+mnist.pkl.gz

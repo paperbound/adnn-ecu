@@ -2,7 +2,7 @@
 
 # tools
 LOG=$(date '+log.%C%y.%m.%d.%H')
-TIME="gtime -v --"
+TIME="/usr/bin/time -v --"
 
 # hdrnn
 declare -a PROGRAMS=(

@@ -1,2 +1,8 @@
 # measurement log files
 log*
+alog*
+plog*
+alog*
+
+# profiling data
+*heaptrack.gz

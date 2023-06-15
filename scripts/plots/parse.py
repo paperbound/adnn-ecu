@@ -1,3 +1,11 @@
+"""
+parse.py
+@author Prasanth Shaji
+
+Takes a log output from one of the measurement scripts and outputs a JSON
+JSON can then be used by one of the graph scripts
+"""
+
 import argparse
 import json
 
@@ -18,8 +26,8 @@ for p in PROGRAMS:
 parser = argparse.ArgumentParser(description="parsing hdrnn measurements")
 parser.add_argument('-l', '--logfile', dest='lfile',
                     action='store', default="log")
-parser.add_argument('-r', '--results', dest='rfile',
-                    action='store', default="results.json")
+parser.add_argument('-t', '--type', dest='type',
+                    action='store', default="exec")
 a = parser.parse_args()
 
 with open(a.lfile) as f:
@@ -37,6 +45,7 @@ def getSize(shape):
             + current_dimension                      # biases
             )
         previous_dimension = current_dimension
+    size += ((previous_dimension * DIGITS) + DIGITS)
     return size
 
 def parseCommand(command):
