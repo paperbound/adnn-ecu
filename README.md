@@ -1,3 +1,3 @@
-# adnn-ecu
+# HDR-NN on ARM
 
-Training and Inference of Anomaly detection neural network on ARM Cortex A
+Training Handwritten Digit Recognition Neural Network based on MNIST on ARM Cortex A
