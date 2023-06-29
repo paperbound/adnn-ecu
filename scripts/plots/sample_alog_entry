@@ -1,0 +1,15 @@
+Running command: ./hdrnn/c-math.h/bin/hdrnn train --epochs 14 --shape  32
+Network classified 9136 (10000) images correctly
+Network classified 9300 (10000) images correctly
+Network classified 9318 (10000) images correctly
+Network classified 9397 (10000) images correctly
+Network classified 9395 (10000) images correctly
+Network classified 9413 (10000) images correctly
+Network classified 9440 (10000) images correctly
+Network classified 9465 (10000) images correctly
+Network classified 9478 (10000) images correctly
+Network classified 9445 (10000) images correctly
+Network classified 9477 (10000) images correctly
+Network classified 9472 (10000) images correctly
+Network classified 9461 (10000) images correctly
+Network classified 9475 (10000) images correctly

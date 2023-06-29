@@ -1,0 +1,10 @@
+{
+	"c-math.h" : [
+		{
+			"epochs": 1,
+			"shape": "2",
+			"size": 1570,
+			"corrects": [9235]
+		}
+	]
+}

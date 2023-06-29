@@ -21,8 +21,6 @@ a = parser.parse_args()
 # see sample_results json
 results = json.load(open(a.rfile))
 
-index = 0 # Size vs Time
-
 fig, ax = plt.subplots()
 plt.xlabel("HDR-NN hidden layer shape")
 plt.ylabel("Time to complete 1 Epoch of Training (seconds)")

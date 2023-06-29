@@ -1,5 +1,6 @@
 # results.json
 *.json
+!sample_results_*.json
 
 # results png
 *.png
