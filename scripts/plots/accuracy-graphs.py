@@ -35,6 +35,16 @@ results = json.load(open(a.rfile))
 width = 0.1  # the width of the bars
 multiplier = 0
 
+plt.rcParams.update(
+    {
+        'font.family': 'serif',
+        'font.serif': 'Times New Roman',
+        'figure.figsize': (5.8, 5.4),
+        'axes.titlesize': 'small',
+        'font.size': 10,
+    }
+)
+
 fig, ax = plt.subplots(layout='constrained')
 
 shape_accuracies = {}
@@ -58,14 +68,23 @@ for s in shape_accuracies:
     rects = ax.bar([x + offset for x in xs],
                    shape_accuracies[s], width,
                    label=s,
-                   color=colors[s])
-    ax.bar_label(rects, padding=4)
+                   color=colors[s], alpha=0.81)
+    ax.bar_label(rects, padding=3,
+                 rotation=90,
+                 fontsize='small')
     multiplier += 1
+
+ax.spines[['right', 'top']].set_visible(False)
 
 ax.set_xticks([x + 4*width for x in xs], list(results.keys()))
 ax.set_ylabel('Model Accuracy in %')
-ax.legend(loc='upper center', ncols=len(shapes),
-          bbox_to_anchor=(0.5, 1.09), title='HDR-NN Hidden Layer Shapes')
+
+ax.legend(loc='upper center', ncols=(len(shapes) / 2) + 1,
+          bbox_to_anchor=(0.5, 1.25),
+          title='HDR-NN Hidden Layer Shapes',
+          handletextpad=0.15)
 ax.set_ylim(0, 100)
 
-plt.show()
+plt.savefig('accuracy.pgf', bbox_inches='tight', backend='pgf')
+
+#plt.show()

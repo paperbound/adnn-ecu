@@ -2,5 +2,6 @@
 *.json
 !sample_results_*.json
 
-# results png
+# results images
 *.png
+*.pgf
